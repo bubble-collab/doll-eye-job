@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#FFF3E4" />
+  <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙여 박스를 완성하는 힐링 미니게임, 인형 눈알 붙이기." />
+  <title>인형 눈알 붙이기</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- 상단 내비게이션 바: 앱인토스 콘솔 앱 이름과 동일한 제목 -->
+    <header class="navbar">
+      <button class="nav-btn" id="backBtn" type="button" aria-label="뒤로가기">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <h1 class="nav-title">인형 눈알 붙이기</h1>
+      <button class="nav-btn" id="soundBtn" type="button" aria-label="소리 끄기" aria-pressed="true">
+        <svg class="ico-on" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/>
+          <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        </svg>
+        <svg class="ico-off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/>
+          <path d="m16 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- 오늘의 작업 현황 -->
+    <section class="hud" aria-label="작업 현황">
+      <div class="hud-item">
+        <span class="hud-label">누적 작업</span>
+        <span class="hud-value"><b id="totalDolls">0</b><i>개</i></span>
+      </div>
+      <span class="hud-sep" aria-hidden="true"></span>
+      <div class="hud-item hud-item--grow">
+        <span class="hud-label">
+          오늘의 가상 일당
+          <button class="info-dot" id="wageInfoBtn" type="button" aria-label="가상 일당 안내">i</button>
+        </span>
+        <span class="hud-value hud-value--wage">
+          <b id="todayWage">₩0</b>
+          <span class="boost-chip" id="boostChip" hidden>×2 <b id="boostTimer">30</b>초</span>
+        </span>
+      </div>
+    </section>
+
+    <!-- 숙련도 -->
+    <section class="grade" aria-label="숙련도">
+      <div class="grade-row">
+        <span class="grade-name"><span id="gradeEmoji" aria-hidden="true">🧵</span><b id="gradeName">수습생</b></span>
+        <span class="grade-next" id="gradeNext">다음 등급까지 <b>30</b>개</span>
+      </div>
+      <div class="grade-track"><span class="grade-fill" id="gradeFill"></span></div>
+    </section>
+
+    <!-- 인형 선택 -->
+    <div class="doll-tabs" role="tablist" aria-label="인형 선택">
+      <button class="doll-tab is-active" id="tabBear" type="button" role="tab" aria-selected="true" data-doll="bear">
+        <span class="doll-tab-emoji" aria-hidden="true">🐻</span><span>곰돌이</span>
+      </button>
+      <button class="doll-tab" id="tabRabbit" type="button" role="tab" aria-selected="false" data-doll="rabbit">
+        <span class="doll-tab-emoji" aria-hidden="true">🐰</span><span>토끼</span>
+      </button>
+    </div>
+
+    <!-- 작업대 -->
+    <main class="stage" id="stage">
+      <div class="stage-bar">
+        <span class="combo-badge" id="comboBadge" hidden>COMBO <b id="comboValue">0</b></span>
+        <span class="stage-hint" id="stageHint">왼쪽 눈부터 톡!</span>
+        <button class="guide-toggle" id="guideBtn" type="button" aria-pressed="true" aria-label="눈 위치 가이드 켜짐">
+          가이드<i aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="doll-area" id="dollArea">
+        <svg id="dollSvg" class="doll-svg" viewBox="0 0 320 320" role="img" aria-label="눈이 없는 인형. 인형 얼굴을 톡톡 눌러 눈을 붙여 주세요.">
+          <defs>
+            <radialGradient id="furBear" cx="38%" cy="26%" r="84%">
+              <stop offset="0%" stop-color="#E3AC7C"/>
+              <stop offset="48%" stop-color="#D0945C"/>
+              <stop offset="100%" stop-color="#AE7440"/>
+            </radialGradient>
+            <radialGradient id="furRabbit" cx="38%" cy="24%" r="86%">
+              <stop offset="0%" stop-color="#FFFDFA"/>
+              <stop offset="52%" stop-color="#F7E5D0"/>
+              <stop offset="100%" stop-color="#DDBC9A"/>
+            </radialGradient>
+            <linearGradient id="muzzleBear" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FDEED9"/>
+              <stop offset="100%" stop-color="#F2D6B5"/>
+            </linearGradient>
+            <linearGradient id="muzzleRabbit" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFFFFF"/>
+              <stop offset="100%" stop-color="#FDEFE2"/>
+            </linearGradient>
+            <filter id="plushShadow" x="-30%" y="-30%" width="160%" height="170%">
+              <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#8C5A34" flood-opacity="0.16"/>
+            </filter>
+          </defs>
+          <ellipse class="doll-shadow" cx="160" cy="278" rx="96" ry="13" />
+          <g id="bodyLayer"></g>
+          <g id="guideLayer"></g>
+          <g id="eyesLayer"></g>
+          <g id="fxLayer"></g>
+        </svg>
+
+        <div class="verdict" id="verdict" hidden aria-live="polite">
+          <b id="verdictTitle">PERFECT!</b>
+          <span id="verdictSub">+₩300</span>
+        </div>
+
+        <div class="pop-layer" id="popLayer" aria-hidden="true"></div>
+
+        <!-- 짝눈 불량 수선 제안 -->
+        <div class="repair-offer" id="repairOffer" hidden>
+          <div class="repair-offer__text">
+            <b>짝눈 불량 발생!</b>
+            <span>광고 보고 1회 수선하면 일당이 복구돼요.</span>
+          </div>
+          <button class="btn btn--small btn--primary" id="repairNow" type="button">광고 보고 수선</button>
+          <button class="repair-skip" id="repairSkip" type="button">그냥 넘기기</button>
+        </div>
+      </div>
+
+      <p class="stage-caption" id="stageCaption">눈이 없는 인형이에요. <b>왼쪽 눈 → 오른쪽 눈</b> 순서로 톡톡!</p>
+    </main>
+
+    <!-- 박스 진행도 -->
+    <section class="box-card" aria-label="박스 진행도">
+      <div class="box-head">
+        <span class="box-title">📦 박스 <b id="boxNo">1</b></span>
+        <span class="box-count"><b id="boxDone">0</b> / <span id="boxSize">10</span> 완성</span>
+      </div>
+      <div class="box-dots" id="boxDots" aria-hidden="true"></div>
+    </section>
+
+    <!-- 광고 보상 슬롯 -->
+    <section class="actions" aria-label="광고 보상">
+      <button class="ad-btn ad-btn--primary" id="boostBtn" type="button">
+        <span class="ad-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+        </span>
+        <span class="ad-text">
+          <b id="boostLabel">광고 보고 30초 일당 2배</b>
+          <small>광고 시청 후 보상이 적용돼요</small>
+        </span>
+      </button>
+
+      <button class="ad-btn" id="repairBtn" type="button">
+        <span class="ad-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M7 17 17 7M14 4l6 6-2.5 2.5-6-6zM4 20l4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="ad-text">
+          <b>짝눈 불량 1회 수선</b>
+          <small>광고 시청 후 수선이 적용돼요</small>
+        </span>
+        <span class="ad-badge" id="repairBadge" hidden>0</span>
+      </button>
+    </section>
+
+    <p class="footnote">표시되는 일당은 <b>게임 내 가상 재화</b>이며 실제 현금·토스포인트로 지급되지 않아요.</p>
+  </div>
+
+  <!-- ================= 모달 ================= -->
+
+  <!-- 종료 확인 -->
+  <div class="modal" id="exitModal" hidden>
+    <div class="modal-backdrop" data-close="exitModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
+      <div class="modal-emoji" aria-hidden="true">🧸</div>
+      <h2 id="exitTitle">앱을 종료할까요?</h2>
+      <p>지금까지 만든 인형 <b id="exitTotal">0</b>개는 기기에 저장돼요.<br />내일 또 만나요!</p>
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="exitStay" type="button">계속 만들기</button>
+        <button class="btn btn--dark" id="exitLeave" type="button">나가기</button>
+      </div>
+      <button class="modal-x" type="button" data-close="exitModal" aria-label="닫기">✕</button>
+    </div>
+  </div>
+
+  <!-- 가상 일당 안내 -->
+  <div class="modal" id="wageModal" hidden>
+    <div class="modal-backdrop" data-close="wageModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="wageTitle">
+      <span class="pill pill--mint">안내</span>
+      <h2 id="wageTitle">가상 일당이에요</h2>
+      <p class="modal-lead">이 앱은 앱인토스 미니앱 <b>프로토타입</b>이에요.</p>
+      <ul class="modal-list">
+        <li>표시되는 일당은 게임을 즐기기 위한 <b>가상 재화</b>예요.</li>
+        <li>실제 현금, 토스포인트, 비즈월렛으로 <b>지급되지 않아요.</b></li>
+        <li>작업 기록은 이 기기의 브라우저에만 저장돼요.</li>
+      </ul>
+      <div class="modal-actions">
+        <button class="btn btn--ghost btn--danger" id="resetBtn" type="button">기록 초기화</button>
+        <button class="btn btn--primary" type="button" data-close="wageModal">확인</button>
+      </div>
+      <button class="modal-x" type="button" data-close="wageModal" aria-label="닫기">✕</button>
+    </div>
+  </div>
+
+  <!-- 광고 사전 안내 (모든 광고는 이 안내를 거칩니다) -->
+  <div class="modal" id="adNoticeModal" hidden>
+    <div class="modal-backdrop" data-close="adNoticeModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adNoticeTitle">
+      <span class="pill pill--ad">광고 안내</span>
+      <h2 id="adNoticeTitle">광고를 보고 보상을 받아요</h2>
+      <p id="adNoticeDesc">광고 시청 후 보상이 적용돼요.</p>
+      <p class="ad-notice-note">광고는 몇 초간 재생되고, 끝까지 보면 보상이 적용돼요. 중간에 닫으면 보상이 지급되지 않아요.</p>
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="adCancel" type="button">다음에</button>
+        <button class="btn btn--primary" id="adConfirm" type="button">광고 보기</button>
+      </div>
+      <button class="modal-x" type="button" data-close="adNoticeModal" aria-label="닫기">✕</button>
+    </div>
+  </div>
+
+  <!-- 광고 재생 (데모) -->
+  <div class="modal modal--ad" id="adPlayerModal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="ad-player" role="dialog" aria-modal="true" aria-labelledby="adPlayerTitle">
+      <div class="ad-player__top">
+        <span class="pill pill--demo" id="adPlayerKind">보상형 광고 (데모)</span>
+        <span class="ad-player__left" id="adPlayerLeft">5초</span>
+      </div>
+      <div class="ad-player__scene" aria-hidden="true">
+        <div class="ad-scene__bear">🧸</div>
+        <div class="ad-scene__copy" id="adPlayerTitle">곰돌이도 깜짝 놀란<br />광고 시청 시간</div>
+        <div class="ad-scene__spark">✦</div>
+        <div class="ad-scene__spark ad-scene__spark--2">✦</div>
+      </div>
+      <div class="ad-player__bar"><span id="adPlayerFill"></span></div>
+      <p class="ad-player__note">데모 광고예요. 실제 광고가 아닙니다.<br />끝까지 보면 보상이 적용돼요.</p>
+    </div>
+  </div>
+
+  <!-- 박스 완성 -->
+  <div class="modal" id="boxModal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-card modal-card--box" role="dialog" aria-modal="true" aria-labelledby="boxTitle">
+      <div class="box-burst" id="boxBurst" aria-hidden="true"></div>
+      <span class="pill pill--coral">박스 완성</span>
+      <h2 id="boxTitle">박스 <span id="boxModalNo">1</span> 포장 완료!</h2>
+      <p>인형 <b id="boxModalCount">10</b>개를 예쁘게 포장했어요.<br />박스 보너스 <b class="money" id="boxBonusText">+₩2,000</b>가 가상 일당에 더해졌어요.</p>
+      <div class="box-summary" id="boxSummary"></div>
+      <p class="ad-pre">새 박스를 시작하기 전에 <b>광고가 한 번 재생</b>돼요.</p>
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="boxSkip" type="button">광고 없이 계속</button>
+        <button class="btn btn--primary" id="boxAd" type="button">광고 보고 계속</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+
+  <noscript>
+    <p style="padding:24px;text-align:center;font-family:sans-serif">이 미니앱을 사용하려면 자바스크립트를 켜 주세요.</p>
+  </noscript>
+
+  <script src="app.js"></script>
+</body>
+</html>
