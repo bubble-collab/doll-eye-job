@@ -197,8 +197,9 @@ body {
   position: relative;
   width: 100%;
   flex: 0 1 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .doll-svg {
