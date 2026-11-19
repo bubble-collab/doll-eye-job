@@ -251,23 +251,23 @@ body {
 .guide-ring {
   fill: none;
   stroke: #FFFDF6;
-  stroke-width: 2.2;
-  stroke-dasharray: 3 6;
+  stroke-width: 2;
+  stroke-dasharray: 3 7;
   stroke-linecap: round;
-  opacity: 0.92;
+  opacity: 0.85;
   animation: guideSpin 9s linear infinite;
 }
 .guide-ring.is-soft { opacity: 0.38; }
 .guide-ring.is-nudge { animation: guideNudge 0.5s ease-in-out 2; }
 
-.tap-pointer { filter: drop-shadow(0 2px 3px rgba(120, 60, 30, 0.2)); }
+.tap-pointer { filter: drop-shadow(0 3px 5px rgba(110, 62, 34, 0.22)); }
 .tap-pointer__bob { animation: pointerBob 1.2s ease-in-out infinite; }
 .tap-pointer__label {
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.2px;
-  fill: #B96A4C;
+  fill: #B4684A;
 }
 
 /* ---------------- 한 줄 안내 ---------------- */

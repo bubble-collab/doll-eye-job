@@ -552,16 +552,14 @@
   /* ---------------------------------------------------------
      7. 톡톡 가이드 (점선 원 + 깜빡이는 포인터)
      --------------------------------------------------------- */
-  function pointerMarkup(x, y) {
-    var top = y - 52;
-    var w = 34;
-    var h = 22;
+  function tapTargetMarkup(x, y, soft) {
     return '' +
+      '<circle class="guide-halo" cx="' + x + '" cy="' + y + '" r="34"/>' +
+      '<circle class="guide-ring' + (soft ? ' is-soft' : '') + '" cx="' + x + '" cy="' + y + '" r="27"/>' +
       '<g class="tap-pointer">' +
         '<g class="tap-pointer__bob">' +
-          '<rect x="' + (x - w / 2) + '" y="' + top + '" width="' + w + '" height="' + h + '" rx="11" fill="#FFFCF4"/>' +
-          '<path d="M' + (x - 5) + ' ' + (top + h - 2) + ' L' + x + ' ' + (top + h + 6) + ' L' + (x + 5) + ' ' + (top + h - 2) + ' Z" fill="#FFFCF4"/>' +
-          '<text class="tap-pointer__label" x="' + x + '" y="' + (top + 15.5) + '" text-anchor="middle">톡</text>' +
+          '<circle cx="' + x + '" cy="' + y + '" r="17" fill="#FFFCF4"/>' +
+          '<text class="tap-pointer__label" x="' + x + '" y="' + (y + 4.6) + '" text-anchor="middle">톡</text>' +
         '</g>' +
       '</g>';
   }
@@ -575,10 +573,7 @@
     var pt = DOLLS[state.doll].eyes[index];
     var soft = dollsMade >= CONFIG.guideStrongDolls;
 
-    var markup = '' +
-      '<circle class="guide-halo" cx="' + pt.x + '" cy="' + pt.y + '" r="29"/>' +
-      '<circle class="guide-ring' + (soft ? ' is-soft' : '') + '" cx="' + pt.x + '" cy="' + pt.y + '" r="27"/>' +
-      pointerMarkup(pt.x, pt.y);
+    var markup = tapTargetMarkup(pt.x, pt.y, soft);
 
     els.guideLayer.innerHTML = markup;
   }
