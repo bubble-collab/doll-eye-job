@@ -429,7 +429,7 @@ body {
   z-index: 1;
   width: 100%;
   max-width: 430px;
-  padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+  padding: 0 14px calc(78px + env(safe-area-inset-bottom));
   animation: sheetUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
