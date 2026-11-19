@@ -1,6 +1,7 @@
 /* =========================================================
    인형 눈알 붙이기 — app.js
-   앱인토스(App in Toss) 미니앱 프로토타입
+   앱인토스(App in Toss) 비게임(엔터테인먼트) 미니앱 프로토타입
+   - 점수·판정·콤보·등급·미션 없이 "붙이며 잠깐 쉬어가기"
    - 순수 클라이언트 사이드 (iframe / eval / SSR 사용 없음)
    - 외부 라이브러리·외부 리소스 없음
    ========================================================= */
@@ -13,46 +14,73 @@
   var CONFIG = {
     appName: '인형 눈알 붙이기',
 
-    // 박스 단위: 10개 = 1박스
-    boxSize: 10,
+    // 오늘의 목표: 목탁처럼 "은은한 목표 감각"만 주는 숫자예요.
+    dailyGoal: 100,
+
+    // 인형 1개를 완성할 때 쌓이는 가상 기록 (실제 부업 후기처럼 소박한 단가 · 지급 없음)
+    recordPerDoll: 30,
 
     // 광고 보상
-    boostSeconds: 30,      // "30초 일당 2배"
-    demoAdSeconds: 5,      // 프로토타입 데모 광고 길이(초)
+    focusSeconds: 30,       // "30초 집중 모드" (가상 기록 2배)
+    demoAdSeconds: 5,       // 프로토타입 데모 광고 길이(초)
 
-    // 가상 일당 (게임 내 재화)
-    pay: { perfect: 300, good: 180, defect: 60 },
-    boxBonus: 2000,
-    comboBonus: { per: 10, max: 200 },
+    // 인형 몇 개마다 가벼운 쉼표 배너를 띄울지 (흐름을 끊지 않음)
+    restEvery: 10,
 
-    // 정확도 판정 반경 (SVG 좌표 기준)
-    accuracy: { perfect: 14, good: 36 },
+    // 눈 자리에 이 반경 안으로 누르면 살짝 맞춰 붙여요. 밖이면 누른 곳에 그대로.
+    snapRadius: 26,
 
-    // 이 개수까지는 가이드가 진하게 보이고, 이후에는 은은해져요.
+    // 이 개수까지는 가이드가 또렷하고, 이후에는 은은해져요.
     guideStrongDolls: 3,
 
-    storageKey: 'doll-eye-job.v1',
+    storageKey: 'doll-eye-job.v2',
+
+    /* ★ 사업자 등록 후 토스 프로모션으로 보상을 지급할 때 쓰는 자리예요.
+       - 지금은 빈 문자열: 앱은 아무 보상도 요청하지 않고 기록만 쌓아요.
+       - 콘솔에서 프로모션을 만들고 코드를 발급받으면 여기에 넣어 주세요.
+       - 실제 지급은 호스트(SDK)에서 window.DollEyePromotion.register(...)로 연결합니다.
+       - README 「프로모션 보상 연동」 항목을 참고하세요. */
+    promotionCode: '',
 
     /* ★ 앱마다 새로 발급받은 광고 그룹 ID를 넣어 주세요.
        - 다른 앱에서 쓰던 ID를 재사용하면 정적 분석에서 반려될 수 있어요.
        - 지금 값은 앱인토스 문서의 테스트용 ID예요. */
     adGroupIds: {
-      rewardedDoubleWage: 'ait-ad-test-rewarded-id',
-      rewardedRepair: 'ait-ad-test-rewarded-id',
-      interstitialBoxComplete: 'ait-ad-test-interstitial-id',
+      rewardedFocus: 'ait-ad-test-rewarded-id',
+      rewardedSpecialRibbon: 'ait-ad-test-rewarded-id',
+      interstitialRest: 'ait-ad-test-interstitial-id',
       bannerBottom: 'ait-ad-test-banner-id'
     }
   };
 
-  /* 숙련도 등급 (누적 작업량 기준) */
-  var GRADES = [
-    { name: '수습생', emoji: '🧵', min: 0,   mult: 1.0 },
-    { name: '숙련공', emoji: '🪡', min: 30,  mult: 1.15 },
-    { name: '반장',   emoji: '📋', min: 90,  mult: 1.3 },
-    { name: '공장장', emoji: '🏭', min: 200, mult: 1.5 }
-  ];
-
   var ACCENTS = ['#ff8e7a', '#6fc9b0', '#ffc24d', '#9da9ff', '#f28fb6'];
+  var SPECIAL_RIBBON = 'url(#ribbonSpecial)';
+
+  /* 완성했을 때 건네는 한 줄 (판정 없음 · 실제 부업 후기 감성) */
+  var HEAL_LINES = [
+    '본드 콕! 깔끔하게 붙었어요',
+    '눈알 위치 딱이네요',
+    '손가락에 본드 묻은 느낌…',
+    '잠깐 허리 한번 펴세요!',
+    '오늘 할당량 순항 중!',
+    '이 정도면 상품으로 나갈 만해요',
+    '하나 더, 손이 익었네요',
+    '잡생각은 본드 굳기 전에 떼어냈어요'
+  ];
+  /* 살짝 비뚤게 붙었을 때: 불량이 아니라 개성으로 */
+  var CUTE_LINES = [
+    '살짝 삐뚤어도 개성 있는 표정!',
+    '이건 윙크로 나갑니다',
+    '눈알이 노는 중… 귀엽네요',
+    '봉제선 살짝 벗어났지만 합격!'
+  ];
+  var REST_LINES = [
+    '허리 한번 펴고, 물 한 모금 마셔요.',
+    '손목 돌리고 어깨 툭툭 털어 봐요.',
+    '10개 채웠어요. 잠깐 창밖 보고 올까요?',
+    '눈 한번 깜빡이고 다시 시작해요.',
+    '오늘도 충분히 잘하고 있어요.'
+  ];
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -74,7 +102,7 @@
   function bearBody(accent) {
     return '' +
       '<g filter="url(#plushShadow)">' +
-        // 왼쪽 귀 + 리본
+        // 왼쪽 귀
         '<g>' +
           '<circle cx="84" cy="92" r="37" fill="url(#furBear)"/>' +
           '<circle cx="84" cy="92" r="21" fill="#efc29c"/>' +
@@ -92,14 +120,14 @@
         '<path d="M52 178 q-6 -26 8 -50" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
         '<path d="M268 178 q6 -26 -8 -50" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
         // 주둥이
-        '<ellipse cx="160" cy="206" rx="54" ry="40" fill="url(#muzzleBear)"/>' +
-        '<path d="M146 184 q14 -9 28 0 q-4 15 -14 17 q-10 -2 -14 -17 z" fill="#4b2e22"/>' +
-        '<ellipse cx="154" cy="188" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.55"/>' +
-        '<path id="dollMouth" d="M160 201 q-12 16 -25 5 M160 201 q12 16 25 5" fill="none" stroke="#6a4028" stroke-width="3.4" stroke-linecap="round"/>' +
+        '<ellipse cx="160" cy="212" rx="52" ry="37" fill="url(#muzzleBear)"/>' +
+        '<path d="M146 192 q14 -9 28 0 q-4 15 -14 17 q-10 -2 -14 -17 z" fill="#4b2e22"/>' +
+        '<ellipse cx="154" cy="196" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.55"/>' +
+        '<path id="dollMouth" d="M160 209 q-12 15 -25 5 M160 209 q12 15 25 5" fill="none" stroke="#6a4028" stroke-width="3.4" stroke-linecap="round"/>' +
         // 볼터치
-        '<ellipse cx="88" cy="196" rx="18" ry="10" fill="#f08c82" opacity="0.4"/>' +
-        '<ellipse cx="232" cy="196" rx="18" ry="10" fill="#f08c82" opacity="0.4"/>' +
-        '<g transform="translate(76 66) rotate(-16) scale(0.62)">' + bowMarkup(accent) + '</g>' +
+        '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
+        '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
+        '<g transform="translate(76 64) rotate(-16) scale(0.62)">' + bowMarkup(accent) + '</g>' +
       '</g>';
   }
 
@@ -122,20 +150,20 @@
         '<ellipse cx="160" cy="182" rx="102" ry="90" fill="url(#furRabbit)"/>' +
         '<ellipse cx="120" cy="138" rx="34" ry="17" fill="#ffffff" opacity="0.3" transform="rotate(-16 120 138)"/>' +
         // 주둥이
-        '<ellipse cx="160" cy="216" rx="46" ry="31" fill="url(#muzzleRabbit)"/>' +
-        '<path d="M151 201 q9 -7 18 0 q-3 9 -9 10 q-6 -1 -9 -10 z" fill="#f08a96"/>' +
-        '<path id="dollMouth" d="M160 212 q-10 13 -21 3 M160 212 q10 13 21 3" fill="none" stroke="#8a5a44" stroke-width="3.1" stroke-linecap="round"/>' +
+        '<ellipse cx="160" cy="220" rx="46" ry="31" fill="url(#muzzleRabbit)"/>' +
+        '<path d="M151 206 q9 -7 18 0 q-3 9 -9 10 q-6 -1 -9 -10 z" fill="#f08a96"/>' +
+        '<path id="dollMouth" d="M160 216 q-10 13 -21 3 M160 216 q10 13 21 3" fill="none" stroke="#8a5a44" stroke-width="3.1" stroke-linecap="round"/>' +
         // 수염
         '<g stroke="#b99a82" stroke-width="2" stroke-linecap="round" opacity="0.5">' +
-          '<path d="M114 208 q-22 -5 -34 -11"/>' +
-          '<path d="M114 217 q-24 2 -36 0"/>' +
-          '<path d="M206 208 q22 -5 34 -11"/>' +
-          '<path d="M206 217 q24 2 36 0"/>' +
+          '<path d="M114 212 q-22 -5 -34 -11"/>' +
+          '<path d="M114 221 q-24 2 -36 0"/>' +
+          '<path d="M206 212 q22 -5 34 -11"/>' +
+          '<path d="M206 221 q24 2 36 0"/>' +
         '</g>' +
         // 볼터치
-        '<ellipse cx="88" cy="204" rx="18" ry="10" fill="#f49aa6" opacity="0.45"/>' +
-        '<ellipse cx="232" cy="204" rx="18" ry="10" fill="#f49aa6" opacity="0.45"/>' +
-        '<g transform="translate(106 50) rotate(-10) scale(0.56)">' + bowMarkup(accent) + '</g>' +
+        '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
+        '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
+        '<g transform="translate(106 48) rotate(-10) scale(0.56)">' + bowMarkup(accent) + '</g>' +
       '</g>';
   }
 
@@ -146,17 +174,15 @@
       eyes: [{ x: 118, y: 142 }, { x: 202, y: 142 }],
       center: { x: 160, y: 160 },
       hitRadius: 150,
-      clamp: { x0: 88, x1: 232, y0: 116, y1: 204 },
-      sadMouth: 'M160 201 q-12 -10 -25 -2 M160 201 q12 -10 25 -2'
+      clamp: { x0: 86, x1: 234, y0: 108, y1: 200 }
     },
     rabbit: {
       name: '토끼',
       body: rabbitBody,
-      eyes: [{ x: 124, y: 160 }, { x: 196, y: 160 }],
+      eyes: [{ x: 124, y: 158 }, { x: 196, y: 158 }],
       center: { x: 160, y: 182 },
       hitRadius: 150,
-      clamp: { x0: 92, x1: 228, y0: 142, y1: 216 },
-      sadMouth: 'M160 212 q-10 -8 -21 -1 M160 212 q10 -8 21 -1'
+      clamp: { x0: 92, x1: 228, y0: 132, y1: 212 }
     }
   };
 
@@ -246,37 +272,26 @@
     }
 
     var sounds = {
+      // 눈이 자리에 톡 붙는 소리
       tok: function () {
         noise({ dur: 0.05, freq: 2400, gain: 0.2 });
         tone({ freq: 900, to: 320, dur: 0.07, gain: 0.16, type: 'sine' });
       },
+      // 살짝 다른 자리에 붙는 소리 (더 부드럽게)
       pok: function () {
-        noise({ dur: 0.06, freq: 900, gain: 0.16 });
-        tone({ freq: 420, to: 240, dur: 0.11, gain: 0.16, type: 'triangle' });
+        noise({ dur: 0.06, freq: 900, gain: 0.15 });
+        tone({ freq: 460, to: 300, dur: 0.11, gain: 0.14, type: 'triangle' });
       },
-      perfect: function () {
-        tone({ freq: 987.77, dur: 0.12, gain: 0.18, type: 'sine' });
-        tone({ freq: 1318.51, dur: 0.24, gain: 0.15, type: 'sine', delay: 0.085 });
-        tone({ freq: 1975.53, dur: 0.18, gain: 0.06, type: 'sine', delay: 0.17 });
+      // 인형 완성
+      chime: function () {
+        tone({ freq: 784, dur: 0.14, gain: 0.15, type: 'sine' });
+        tone({ freq: 1046.5, dur: 0.24, gain: 0.13, type: 'sine', delay: 0.08 });
+        tone({ freq: 1568, dur: 0.2, gain: 0.05, type: 'sine', delay: 0.16 });
       },
-      good: function () {
-        tone({ freq: 659.25, dur: 0.1, gain: 0.15, type: 'triangle' });
-        tone({ freq: 880, dur: 0.16, gain: 0.11, type: 'triangle', delay: 0.08 });
-      },
-      defect: function () {
-        tone({ freq: 240, to: 150, dur: 0.22, gain: 0.17, type: 'sawtooth' });
-        tone({ freq: 186, to: 120, dur: 0.26, gain: 0.1, type: 'square', delay: 0.06 });
-      },
-      combo: function () {
-        var base = 659.25;
-        [0, '1.26', '1.5'].forEach(function (m, i) {
-          var k = typeof m === 'number' ? m : parseFloat(m);
-          tone({ freq: base * Math.pow(k, 1), dur: 0.1, gain: 0.12, type: 'triangle', delay: i * 0.055 });
-        });
-      },
-      box: function () {
+      // 목표 달성 / 리본 열림
+      fanfare: function () {
         [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
-          tone({ freq: f, dur: 0.3, gain: 0.14, type: 'triangle', delay: i * 0.09 });
+          tone({ freq: f, dur: 0.3, gain: 0.13, type: 'triangle', delay: i * 0.09 });
         });
       },
       ui: function () {
@@ -292,7 +307,6 @@
         if (fn) fn();
       },
       setMuted: function (v) { muted = !!v; },
-      isMuted: function () { return muted; },
       resume: function () {
         var c = audio();
         if (c && c.state === 'suspended' && c.resume) c.resume().catch(function () {});
@@ -305,7 +319,7 @@
      --------------------------------------------------------- */
   var todayKst = function () {
     var d = new Date();
-    // 기기 시간대와 무관하게 한국 날짜 기준으로 일당을 초기화해요.
+    // 기기 시간대와 무관하게 한국 날짜 기준으로 초기화해요.
     try {
       return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(d);
     } catch (e) {
@@ -317,16 +331,14 @@
     return {
       day: todayKst(),
       doll: 'bear',
-      total: 0,
-      today: 0,
-      combo: 0,
-      bestCombo: 0,
-      boxNum: 1,
-      boxCount: 0,
-      defects: 0,
-      repaired: 0,
-      boxesDone: 0,
-      boostUntil: 0,
+      total: 0,          // 누적 완성 인형
+      todayCount: 0,     // 오늘 완성 인형
+      todayRecord: 0,    // 오늘의 가상 기록(원)
+      sinceRest: 0,      // 마지막 쉼표 배너 이후 완성 수
+      goalDone: false,   // 오늘 목표 달성 표시
+      promotionGranted: false,
+      specialRibbon: false,
+      focusUntil: 0,
       guide: true,
       muted: false,
       accentSeed: 0
@@ -352,16 +364,18 @@
     }
     if (state.day !== todayKst()) {
       state.day = todayKst();
-      state.today = 0;
-      state.combo = 0;
-      state.boostUntil = 0;
+      state.todayCount = 0;
+      state.todayRecord = 0;
+      state.sinceRest = 0;
+      state.goalDone = false;
+      state.promotionGranted = false;
+      state.focusUntil = 0;
     }
     if (!DOLLS[state.doll]) state.doll = 'bear';
-    state.boxCount = Math.max(0, Math.min(CONFIG.boxSize, Number(state.boxCount) || 0));
     state.total = Math.max(0, Number(state.total) || 0);
-    state.today = Math.max(0, Number(state.today) || 0);
-    state.defects = Math.max(0, Number(state.defects) || 0);
-    state.gradeIndex = gradeIndexFor(state.total);
+    state.todayCount = Math.max(0, Number(state.todayCount) || 0);
+    state.todayRecord = Math.max(0, Number(state.todayRecord) || 0);
+    state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
   }
 
   var saveTimer = null;
@@ -371,20 +385,12 @@
       saveTimer = null;
       try {
         window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-      } catch (e) { /* 저장 공간이 없어도 게임은 계속 */ }
+      } catch (e) { /* 저장 공간이 없어도 계속 동작 */ }
     }, 120);
   }
 
-  function gradeIndexFor(total) {
-    var idx = 0;
-    for (var i = 0; i < GRADES.length; i++) {
-      if (total >= GRADES[i].min) idx = i;
-    }
-    return idx;
-  }
-
-  function isBoosted() {
-    return Date.now() < state.boostUntil;
+  function isFocus() {
+    return Date.now() < state.focusUntil;
   }
 
   function won(n) {
@@ -397,8 +403,8 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function lerp(a, b, t) { return a + (b - a) * t; }
   function rand(min, max) { return min + Math.random() * (max - min); }
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 
   /* ---------------------------------------------------------
      5. DOM
@@ -409,47 +415,37 @@
     backBtn: $('backBtn'),
     soundBtn: $('soundBtn'),
     totalDolls: $('totalDolls'),
-    todayWage: $('todayWage'),
-    wageInfoBtn: $('wageInfoBtn'),
-    boostChip: $('boostChip'),
-    boostTimer: $('boostTimer'),
-    gradeEmoji: $('gradeEmoji'),
-    gradeName: $('gradeName'),
-    gradeNext: $('gradeNext'),
-    gradeFill: $('gradeFill'),
+    todayRecord: $('todayRecord'),
+    recordInfoBtn: $('recordInfoBtn'),
+    focusChip: $('focusChip'),
+    focusTimer: $('focusTimer'),
+    goalBox: $('goalBox'),
+    goalDone: $('goalDone'),
+    goalTotal: $('goalTotal'),
+    goalFill: $('goalFill'),
     tabBear: $('tabBear'),
     tabRabbit: $('tabRabbit'),
     stage: $('stage'),
-    stageHint: $('stageHint'),
-    stageCaption: $('stageCaption'),
-    guideBtn: $('guideBtn'),
-    comboBadge: $('comboBadge'),
-    comboValue: $('comboValue'),
+    hint: $('hint'),
     dollSvg: $('dollSvg'),
     bodyLayer: $('bodyLayer'),
     guideLayer: $('guideLayer'),
     eyesLayer: $('eyesLayer'),
     fxLayer: $('fxLayer'),
-    verdict: $('verdict'),
-    verdictTitle: $('verdictTitle'),
-    verdictSub: $('verdictSub'),
     popLayer: $('popLayer'),
-    repairOffer: $('repairOffer'),
-    repairNow: $('repairNow'),
-    repairSkip: $('repairSkip'),
-    boxNo: $('boxNo'),
-    boxDone: $('boxDone'),
-    boxSize: $('boxSize'),
-    boxDots: $('boxDots'),
-    boostBtn: $('boostBtn'),
-    boostLabel: $('boostLabel'),
-    repairBtn: $('repairBtn'),
-    repairBadge: $('repairBadge'),
+    restBanner: $('restBanner'),
+    restBannerCount: $('restBannerCount'),
+    focusBtn: $('focusBtn'),
+    focusLabel: $('focusLabel'),
+    ribbonBtn: $('ribbonBtn'),
+    ribbonLabel: $('ribbonLabel'),
+    ribbonNote: $('ribbonNote'),
     exitModal: $('exitModal'),
     exitTotal: $('exitTotal'),
     exitStay: $('exitStay'),
     exitLeave: $('exitLeave'),
-    wageModal: $('wageModal'),
+    recordModal: $('recordModal'),
+    guideSwitch: $('guideSwitch'),
     resetBtn: $('resetBtn'),
     adNoticeModal: $('adNoticeModal'),
     adNoticeTitle: $('adNoticeTitle'),
@@ -460,108 +456,107 @@
     adPlayerKind: $('adPlayerKind'),
     adPlayerLeft: $('adPlayerLeft'),
     adPlayerFill: $('adPlayerFill'),
-    boxModal: $('boxModal'),
-    boxModalNo: $('boxModalNo'),
-    boxModalCount: $('boxModalCount'),
-    boxBonusText: $('boxBonusText'),
-    boxSummary: $('boxSummary'),
-    boxBurst: $('boxBurst'),
-    boxSkip: $('boxSkip'),
-    boxAd: $('boxAd'),
+    restModal: $('restModal'),
+    restTitle: $('restTitle'),
+    restMessage: $('restMessage'),
+    restSummary: $('restSummary'),
+    restBurst: $('restBurst'),
+    restSkip: $('restSkip'),
+    restAd: $('restAd'),
     toast: $('toast')
   };
 
   /* ---------------------------------------------------------
-     6. 진행 상태 (게임 루프)
+     6. 흐름 상태
      --------------------------------------------------------- */
-  var phase = 'left';      // 'left' | 'right' | 'done' | 'locked'
+  var phase = 'left';        // 'left' | 'right' | 'done'
   var taps = [];
   var advanceTimer = null;
-  var repairTimer = null;
-  var boostInterval = null;
-  var boxPending = false;
+  var focusInterval = null;
+  var bannerTimer = null;
+  var restAfterAdvance = false;
+  var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
 
-  var dollsMade = 0; // 이번 실행에서 만든 인형 수(가이드 세기용)
-
-  function nextAccent() {
+  function ribbonColor() {
+    if (state.specialRibbon) return SPECIAL_RIBBON;
     var seed = Number(state.accentSeed) || 0;
     state.accentSeed = seed + 1;
     return ACCENTS[seed % ACCENTS.length];
   }
 
-  function bodyMarkup(doll) {
-    return DOLLS[doll].body(nextAccent());
-  }
-
   function newDoll() {
     clearTimeout(advanceTimer);
-    clearTimeout(repairTimer);
     advanceTimer = null;
-    repairTimer = null;
-    boxPending = false;
 
     phase = 'left';
     taps = [];
-    els.repairOffer.hidden = true;
-    els.verdict.hidden = true;
     els.eyesLayer.innerHTML = '';
     els.fxLayer.innerHTML = '';
-    els.bodyLayer.innerHTML = bodyMarkup(state.doll);
-    els.dollSvg.classList.remove('is-complete', 'is-happy', 'is-ouch', 'is-float', 'is-peek');
+    els.bodyLayer.innerHTML = DOLLS[state.doll].body(ribbonColor());
+    els.dollSvg.classList.remove('is-happy', 'is-peek', 'is-enter', 'is-float');
     els.dollSvg.classList.add('is-enter');
-    // 등장 애니메이션이 끝나면 둥실둥실
     window.setTimeout(function () {
       els.dollSvg.classList.remove('is-enter');
       els.dollSvg.classList.add('is-float');
     }, 440);
 
-    updateHint('왼쪽 눈부터 톡!');
-    setCaption('눈이 없는 인형이에요. <b>왼쪽 눈 → 오른쪽 눈</b> 순서로 톡톡!');
+    setHint('왼쪽 눈을 톡 눌러 보세요');
     renderGuide();
     saveState();
   }
 
-  function setCaption(html) {
-    els.stageCaption.innerHTML = html;
-  }
-
-  function updateHint(text) {
-    els.stageHint.textContent = text;
-  }
-
-  /* 가이드 링 */
-  function renderGuide() {
-    els.guideLayer.innerHTML = '';
-    if (!state.guide) return;
-
-    var eyes = DOLLS[state.doll].eyes;
-    var soft = dollsMade >= CONFIG.guideStrongDolls;
-
-    eyes.forEach(function (pt, i) {
-      if (i < taps.length) return;
-      var ring = document.createElementNS(SVG_NS, 'circle');
-      ring.setAttribute('cx', pt.x);
-      ring.setAttribute('cy', pt.y);
-      ring.setAttribute('r', i === taps.length ? 20 : 17);
-      ring.setAttribute('class', 'guide-ring' +
-        (i === taps.length ? ' is-active' : '') +
-        (soft ? ' is-soft' : ''));
-      els.guideLayer.appendChild(ring);
-    });
-  }
-
-  function nudgeGuide(which) {
-    var rings = els.guideLayer.querySelectorAll('.guide-ring');
-    if (rings[which]) {
-      rings[which].classList.add('is-nudge');
-      window.setTimeout(function () {
-        if (rings[which]) rings[which].classList.remove('is-nudge');
-      }, 1100);
+  function setHint(text, reaction) {
+    els.hint.textContent = text;
+    if (reaction) {
+      els.hint.classList.remove('is-reaction');
+      void els.hint.offsetWidth;
+      els.hint.classList.add('is-reaction');
+    } else {
+      els.hint.classList.remove('is-reaction');
     }
   }
 
   /* ---------------------------------------------------------
-     7. 눈 붙이기
+     7. 톡톡 가이드 (점선 원 + 깜빡이는 포인터)
+     --------------------------------------------------------- */
+  function pointerMarkup(x, y) {
+    var top = y - 76;
+    return '' +
+      '<g class="tap-pointer">' +
+        '<g class="tap-pointer__bob">' +
+          '<rect x="' + (x - 20) + '" y="' + top + '" width="40" height="27" rx="13.5" fill="#ff7a59"/>' +
+          '<path d="M' + (x - 5.5) + ' ' + (top + 25) + ' L' + x + ' ' + (top + 34) + ' L' + (x + 5.5) + ' ' + (top + 25) + ' Z" fill="#ff7a59"/>' +
+          '<text class="tap-pointer__label" x="' + x + '" y="' + (top + 18.5) + '" text-anchor="middle">톡</text>' +
+        '</g>' +
+      '</g>';
+  }
+
+  function renderGuide() {
+    els.guideLayer.innerHTML = '';
+    if (!state.guide) return;
+    if (phase !== 'left' && phase !== 'right') return;
+
+    var index = Math.min(taps.length, 1);
+    var pt = DOLLS[state.doll].eyes[index];
+    var soft = dollsMade >= CONFIG.guideStrongDolls;
+
+    var markup = '' +
+      '<circle class="guide-halo" cx="' + pt.x + '" cy="' + pt.y + '" r="29"/>' +
+      '<circle class="guide-ring' + (soft ? ' is-soft' : '') + '" cx="' + pt.x + '" cy="' + pt.y + '" r="27"/>' +
+      pointerMarkup(pt.x, pt.y);
+
+    els.guideLayer.innerHTML = markup;
+  }
+
+  function nudgeGuide() {
+    var ring = els.guideLayer.querySelector('.guide-ring');
+    if (!ring) return;
+    ring.classList.add('is-nudge');
+    window.setTimeout(function () { ring.classList.remove('is-nudge'); }, 1100);
+  }
+
+  /* ---------------------------------------------------------
+     8. 눈 붙이기
      --------------------------------------------------------- */
   function svgPoint(evt) {
     var svg = els.dollSvg;
@@ -590,246 +585,173 @@
     };
   }
 
-  function classify(d) {
-    if (d <= CONFIG.accuracy.perfect) return 'perfect';
-    if (d <= CONFIG.accuracy.good) return 'good';
-    return 'defect';
-  }
-
-  function createEye(pos, kind) {
+  /* 눈알: 큼직하고 똘망똘망하게 (하이라이트 반짝이 2개) */
+  function createEye(pos, style) {
     var g = document.createElementNS(SVG_NS, 'g');
-    var rot = 0;
-    var scale = 1;
-    var irisX = rand(-2.2, 2.2);
-    var irisY = rand(-1.6, 1.6);
-
-    if (kind === 'defect') {
-      // 짝눈: 크기·각도·시선이 제멋대로 — 웃기지만 조금 불쌍한 표정
-      rot = rand(-20, 20);
-      scale = rand(0.66, 1.4);
-      irisX = rand(-5.4, 5.4);
-      irisY = rand(-5, 5);
-    } else if (kind === 'good') {
-      rot = rand(-4, 4);
-      scale = rand(0.94, 1.06);
-    }
-
     g.setAttribute('class', 'eye');
     g.setAttribute('transform',
-      'translate(' + pos.x.toFixed(2) + ' ' + pos.y.toFixed(2) + ') rotate(' + rot.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
+      'translate(' + pos.x.toFixed(2) + ' ' + pos.y.toFixed(2) +
+      ') rotate(' + style.rot.toFixed(1) + ') scale(' + style.scale.toFixed(3) + ')');
+
+    var irisX = style.irisX;
+    var irisY = style.irisY;
 
     g.innerHTML =
       '<g class="eye-inner">' +
-        '<ellipse cx="0" cy="3" rx="15" ry="8" fill="#8a5a3a" opacity="0.08"/>' +
-        '<ellipse class="eye-white" cx="0" cy="0" rx="15.5" ry="16.5"/>' +
-        '<circle class="eye-iris" cx="' + irisX.toFixed(2) + '" cy="' + irisY.toFixed(2) + '" r="8.6"/>' +
-        '<circle class="eye-glint" cx="' + (irisX - 3.1).toFixed(2) + '" cy="' + (irisY - 3.7).toFixed(2) + '" r="2.9"/>' +
-        '<circle class="eye-glint" cx="' + (irisX + 3.4).toFixed(2) + '" cy="' + (irisY + 3.1).toFixed(2) + '" r="1.4" opacity="0.7"/>' +
+        // 살짝 뜬 그림자
+        '<ellipse cx="0" cy="5" rx="20" ry="10" fill="#8a5a3a" opacity="0.1"/>' +
+        // 흰자 (큼직)
+        '<ellipse class="eye-white" cx="0" cy="0" rx="21.5" ry="23"/>' +
+        // 홍채
+        '<circle class="eye-iris" cx="' + irisX.toFixed(2) + '" cy="' + irisY.toFixed(2) + '" r="12.6"/>' +
+        // 반짝이 2개
+        '<circle class="eye-glint" cx="' + (irisX - 4.6).toFixed(2) + '" cy="' + (irisY - 5.2).toFixed(2) + '" r="4.3"/>' +
+        '<circle class="eye-glint" cx="' + (irisX + 4.8).toFixed(2) + '" cy="' + (irisY + 4.4).toFixed(2) + '" r="2.1" opacity="0.75"/>' +
       '</g>';
 
     return g;
   }
 
-  function placeEye(index, tapPoint, kind) {
+  function placeEye(index, tapPoint) {
     var target = DOLLS[state.doll].eyes[index];
-    var finalPos;
+    var d = dist(tapPoint, target);
+    var snapped = d <= CONFIG.snapRadius;
+    var pos = snapped
+      ? { x: target.x + rand(-1.4, 1.4), y: target.y + rand(-1.4, 1.4) }
+      : clampToDoll(tapPoint);
 
-    if (kind === 'perfect') {
-      finalPos = { x: target.x + rand(-0.8, 0.8), y: target.y + rand(-0.8, 0.8) };
-    } else if (kind === 'good') {
-      // 살짝 어긋나지만 귀엽게 보이도록 절반만 반영
-      finalPos = { x: lerp(tapPoint.x, target.x, 0.6), y: lerp(tapPoint.y, target.y, 0.6) };
-    } else {
-      finalPos = tapPoint;
-    }
+    var style = snapped
+      ? { rot: rand(-3, 3), scale: rand(0.98, 1.02), irisX: rand(-2.4, 2.4), irisY: rand(-1.8, 1.8) }
+      : { rot: rand(-8, 8), scale: rand(0.9, 1.1), irisX: rand(-4.4, 4.4), irisY: rand(-3.4, 3.4) };
 
-    var eye = createEye(finalPos, kind);
-    els.eyesLayer.appendChild(eye);
-    SFX.play(kind === 'defect' ? 'pok' : 'tok');
-    return eye;
+    els.eyesLayer.appendChild(createEye(pos, style));
+    taps.push({ snapped: snapped, x: pos.x, y: pos.y });
+    SFX.play(snapped ? 'tok' : 'pok');
+    ripple(pos.x, pos.y);
+    return snapped;
+  }
+
+  function ripple(x, y) {
+    var c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('cx', x);
+    c.setAttribute('cy', y);
+    c.setAttribute('r', 24);
+    c.setAttribute('class', 'ripple');
+    els.fxLayer.appendChild(c);
+
+    // 본드가 톡 눌리며 살짝 번지는 느낌
+    var glue = document.createElementNS(SVG_NS, 'ellipse');
+    glue.setAttribute('cx', x);
+    glue.setAttribute('cy', y);
+    glue.setAttribute('rx', 19);
+    glue.setAttribute('ry', 17);
+    glue.setAttribute('class', 'glue');
+    els.fxLayer.appendChild(glue);
+
+    window.setTimeout(function () {
+      c.remove();
+      glue.remove();
+    }, 620);
   }
 
   function onDollPointerDown(evt) {
     if (evt.cancelable) evt.preventDefault();
     SFX.unlock();
-    if (phase === 'locked' || phase === 'done') return;
+    if (phase !== 'left' && phase !== 'right') return;
 
     var p = svgPoint(evt);
     var d = DOLLS[state.doll];
     if (dist(p, d.center) > d.hitRadius) {
-      updateHint('인형 얼굴을 톡톡 눌러 주세요!');
+      setHint('인형 얼굴을 톡톡 눌러 보세요');
       return;
     }
 
     if (phase === 'left') {
       var dLeft = dist(p, d.eyes[0]);
       var dRight = dist(p, d.eyes[1]);
-      // 오른쪽 눈을 먼저 찍으면 살짝 알려 주고 다시 받아요.
-      if (dRight < 52 && dLeft > 60) {
-        updateHint('왼쪽 눈부터 붙여요!');
-        nudgeGuide(1);
+      // 오른쪽 눈을 먼저 누르면 살짝만 알려 주고, 벌점 없이 다시 받아요.
+      if (dRight + 10 < dLeft && dRight < 60) {
+        setHint('왼쪽 눈부터 톡!');
+        nudgeGuide();
         SFX.play('ui');
-        shakeStage();
         return;
       }
-
-      var kindL = classify(dLeft);
-      var tapL = clampToDoll(p);
-      taps.push({ x: tapL.x, y: tapL.y, acc: kindL, d: dLeft });
-      placeEye(0, tapL, kindL);
+      placeEye(0, p);
       phase = 'right';
-      updateHint(kindL === 'defect' ? '앗, 오른쪽 눈도 붙여요!' : '이제 오른쪽 눈!');
+      setHint('이제 오른쪽 눈!');
       renderGuide();
-      if (kindL === 'defect') {
-        // 첫눈부터 삐뚤어졌으면 표정이 조금 불안해져요.
-        var mouth = document.getElementById('dollMouth');
-        if (mouth) mouth.setAttribute('d', DOLLS[state.doll].sadMouth);
-        els.dollSvg.classList.add('is-peek');
-      }
       return;
     }
 
-    if (phase === 'right') {
-      var dR = dist(p, d.eyes[1]);
-      var kindR = classify(dR);
-      var tapR = clampToDoll(p);
-      taps.push({ x: tapR.x, y: tapR.y, acc: kindR, d: dR });
-      placeEye(1, tapR, kindR);
-      renderGuide();
-      finishDoll();
-    }
-  }
-
-  function shakeStage() {
-    els.stage.classList.remove('is-shake');
-    void els.stage.offsetWidth;
-    els.stage.classList.add('is-shake');
-    window.setTimeout(function () { els.stage.classList.remove('is-shake'); }, 420);
+    placeEye(1, p);
+    finishDoll();
   }
 
   /* ---------------------------------------------------------
-     8. 인형 완성 · 정산
+     9. 인형 완성 (판정 없음 · 끊김 없이 다음 인형)
      --------------------------------------------------------- */
   function finishDoll() {
     phase = 'done';
 
-    var allOk = taps.every(function (t) { return t.acc !== 'defect'; });
-    var result = 'defect';
-    if (allOk) {
-      result = taps.every(function (t) { return t.acc === 'perfect'; }) ? 'perfect' : 'good';
-    }
+    var skewed = taps.some(function (t) { return !t.snapped; });
 
-    // 콤보
-    if (result === 'defect') {
-      state.combo = 0;
-      state.defects += 1;
-    } else {
-      state.combo += 1;
-      state.bestCombo = Math.max(state.bestCombo, state.combo);
-    }
-
-    var grade = GRADES[state.gradeIndex];
-    var base = CONFIG.pay[result];
-    var boosted = isBoosted();
-    var comboBonus = (result === 'defect' || state.combo < 2)
-      ? 0
-      : Math.min(state.combo * CONFIG.comboBonus.per, CONFIG.comboBonus.max);
-    var pay = Math.round((base * grade.mult * (boosted ? 2 : 1)) / 10) * 10 + comboBonus;
-
-    state.today += pay;
     state.total += 1;
-    dollsMade += 1;
+    state.todayCount += 1;
+    state.sinceRest += 1;
 
-    // 박스 진행
-    state.boxCount += 1;
-    var boxFilled = state.boxCount >= CONFIG.boxSize;
+    var gain = CONFIG.recordPerDoll * (isFocus() ? 2 : 1);
+    state.todayRecord += gain;
 
-    // 등급 변동
-    var newGrade = gradeIndexFor(state.total);
-    var gradeUp = newGrade !== state.gradeIndex;
-    state.gradeIndex = newGrade;
-
-    // 표정/연출
     els.dollSvg.classList.remove('is-float', 'is-peek');
-    if (result === 'defect') {
-      els.dollSvg.classList.add('is-ouch');
-      var mouth = document.getElementById('dollMouth');
-      if (mouth) mouth.setAttribute('d', DOLLS[state.doll].sadMouth);
-      addSweatDrop();
-      SFX.play('defect');
-      shakeStage();
+    els.dollSvg.classList.add('is-happy');
+    SFX.play('chime');
+    spawnSparkles(skewed ? 6 : 4);
+    if (!skewed) spawnConfetti(6);
+
+    var line;
+    if (skewed) {
+      line = pick(CUTE_LINES);
+    } else if (Math.random() < 0.22) {
+      line = '귀여운 ' + DOLLS[state.doll].name + ' 완성!';
     } else {
-      els.dollSvg.classList.add('is-happy');
-      SFX.play(result === 'perfect' ? 'perfect' : 'good');
-      if (state.combo > 0 && state.combo % 5 === 0) {
-        SFX.play('combo');
-        spawnConfetti(10);
-      }
+      line = pick(HEAL_LINES);
     }
+    setHint(line, true);
 
-    updateHint(result === 'defect' ? '짝눈 완성…' : '완성!');
-    showVerdict(result, pay);
-    floatPay(pay, boosted);
-    setCaption(result === 'defect'
-      ? '짝눈이 되어 버렸어요. <b>광고로 수선</b>하면 일당이 복구돼요!'
-      : (result === 'perfect' ? '<b>완벽해요!</b> 다음 인형을 준비하고 있어요…' : '<b>좋아요!</b> 다음 인형을 준비하고 있어요…'));
     render();
-
-    if (gradeUp) {
-      window.setTimeout(function () {
-        toast('숙련도 상승! ' + GRADES[state.gradeIndex].emoji + ' ' + GRADES[state.gradeIndex].name + '이 되었어요');
-        SFX.play('combo');
-      }, 650);
-    }
-
     saveState();
 
-    if (result === 'defect') {
-      // 수선 제안 (8초)
-      window.setTimeout(function () {
-        if (boxFilled) return; // 박스 모달이 먼저 뜨는 경우는 넘어감
-        openRepairOffer();
-      }, 700);
+    checkGoal();
+
+    // 쉼표 배너 (흐름을 끊지 않는 가벼운 알림)
+    if (state.sinceRest >= CONFIG.restEvery) {
+      state.sinceRest = 0;
+      showRestBanner();
     }
 
-    // 다음 인형 / 박스 완성
-    if (boxFilled) {
-      boxPending = true;
-      window.setTimeout(showBoxModal, 1150);
-    } else {
-      advanceTimer = window.setTimeout(newDoll, result === 'defect' ? 2600 : 1150);
+    // 바로 다음 눈 없는 인형이 올라와요.
+    advanceTimer = window.setTimeout(newDoll, 880);
+  }
+
+  function checkGoal() {
+    if (!state.goalDone && state.todayCount >= CONFIG.dailyGoal) {
+      state.goalDone = true;
+      spawnConfetti(18);
+      SFX.play('fanfare');
+      toast('오늘의 목표 ' + CONFIG.dailyGoal + '개 달성!');
+      maybeGrantPromotion();
     }
   }
 
-  function showVerdict(result, pay) {
-    els.verdict.hidden = false;
-    els.verdict.className = 'verdict' +
-      (result === 'good' ? ' is-good' : '') +
-      (result === 'defect' ? ' is-defect' : '');
-    els.verdictTitle.textContent = result === 'perfect' ? 'PERFECT!' : (result === 'good' ? 'GOOD' : '짝눈!');
-    els.verdictSub.textContent = '+' + won(pay) + (result === 'defect' ? ' · 불량' : '');
-    window.setTimeout(function () {
-      if (phase !== 'done') return;
-      els.verdict.hidden = true;
-    }, 1500);
-  }
-
-  function floatPay(pay, boosted) {
-    var el = document.createElement('span');
-    el.className = 'float-text';
-    el.textContent = '+' + won(pay) + (boosted ? ' (×2)' : '');
-    el.style.left = '50%';
-    el.style.top = '72%';
-    els.popLayer.appendChild(el);
-    window.setTimeout(function () { el.remove(); }, 1200);
-  }
-
-  function addSweatDrop() {
-    var g = document.createElementNS(SVG_NS, 'g');
-    g.setAttribute('class', 'sweat-drop');
-    g.innerHTML =
-      '<path d="M252 132 q9 14 0 20 q-9 -6 0 -20 z" fill="#8fd3f4" opacity="0.9" stroke="#5fb4dd" stroke-width="1.2"/>';
-    els.fxLayer.appendChild(g);
+  /* 프로모션 자리: 설정과 호스트 연결이 있을 때만 조용히 호출돼요. */
+  function maybeGrantPromotion() {
+    if (!CONFIG.promotionCode) return;
+    if (state.promotionGranted) return;
+    state.promotionGranted = true;
+    saveState();
+    PromotionBridge.grant(CONFIG.promotionCode).then(function (res) {
+      if (res && res.granted) toast('오늘의 목표 보상이 적용됐어요');
+    }).catch(function () { /* 실패해도 앱은 계속 */ });
   }
 
   function spawnConfetti(n) {
@@ -837,10 +759,10 @@
     for (var i = 0; i < n; i++) {
       var b = document.createElement('i');
       b.className = 'confetti';
-      b.style.left = rand(6, 92) + '%';
-      b.style.top = rand(-4, 18) + '%';
+      b.style.left = rand(10, 90) + '%';
+      b.style.top = rand(-2, 14) + '%';
       b.style.background = colors[Math.floor(Math.random() * colors.length)];
-      b.style.animationDelay = (Math.random() * 0.3).toFixed(2) + 's';
+      b.style.animationDelay = (Math.random() * 0.25).toFixed(2) + 's';
       b.style.transform = 'rotate(' + rand(-40, 40) + 'deg)';
       els.popLayer.appendChild(b);
       (function (node) {
@@ -849,150 +771,82 @@
     }
   }
 
+  function spawnSparkles(n) {
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('span');
+      s.className = 'spark';
+      s.textContent = '✦';
+      s.style.left = rand(22, 78) + '%';
+      s.style.top = rand(24, 52) + '%';
+      s.style.animationDelay = (Math.random() * 0.2).toFixed(2) + 's';
+      els.popLayer.appendChild(s);
+      (function (node) {
+        window.setTimeout(function () { node.remove(); }, 1100);
+      })(s);
+    }
+  }
+
   /* ---------------------------------------------------------
-     9. 짝눈 수선
+     10. 쉼표 배너 · 쉬어가는 카드
      --------------------------------------------------------- */
-  function openRepairOffer() {
-    if (state.defects <= 0) return;
-    els.repairOffer.hidden = false;
-    updateHint('광고로 수선할까요?');
-    clearTimeout(advanceTimer);
-    advanceTimer = window.setTimeout(function () {
-      els.repairOffer.hidden = true;
-      newDoll();
-    }, 8000);
+  function showRestBanner() {
+    els.restBannerCount.textContent = String(CONFIG.restEvery);
+    els.restBanner.hidden = false;
+    window.clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(hideRestBanner, 7000);
   }
 
-  els.repairNow.addEventListener('click', function () {
-    SFX.unlock();
-    askAd({
-      title: '짝눈 1회 수선',
-      desc: '광고 시청 후 <b>짝눈 불량 1개</b>가 수선되고 일당이 복구돼요.',
-      confirm: '광고 보고 수선',
-      kind: 'rewardedRepair',
-      onReward: function () {
-        els.repairOffer.hidden = true;
-        clearTimeout(advanceTimer);
-        repairCurrentDefect(true);
-        advanceTimer = window.setTimeout(newDoll, 1200);
-      }
-    });
-  });
+  function hideRestBanner() {
+    window.clearTimeout(bannerTimer);
+    bannerTimer = null;
+    els.restBanner.hidden = true;
+  }
 
-  els.repairSkip.addEventListener('click', function () {
-    els.repairOffer.hidden = true;
-    clearTimeout(advanceTimer);
-    newDoll();
-  });
+  function openRestCard() {
+    hideRestBanner();
+    els.restTitle.textContent = '인형 ' + CONFIG.restEvery + '개 완성!';
+    els.restMessage.textContent = pick(REST_LINES);
+    els.restSummary.innerHTML =
+      '<span>오늘 완성<strong>' + state.todayCount.toLocaleString('ko-KR') + '개</strong></span>' +
+      '<span>오늘의 가상 기록<strong>' + won(state.todayRecord) + '</strong></span>';
+    burstRestConfetti();
+    openModal('restModal');
+    SFX.play('ui');
+  }
 
-  els.repairBtn.addEventListener('click', function () {
-    SFX.unlock();
-    if (state.defects <= 0) {
-      toast('수선할 짝눈 불량이 없어요');
-      return;
+  function burstRestConfetti() {
+    els.restBurst.innerHTML = '';
+    var colors = ['#ff8e7a', '#ffc94d', '#6fc9b0', '#9da9ff', '#f28fb6'];
+    for (var i = 0; i < 16; i++) {
+      var b = document.createElement('i');
+      b.style.left = rand(2, 96) + '%';
+      b.style.background = colors[i % colors.length];
+      b.style.animationDelay = (Math.random() * 0.4).toFixed(2) + 's';
+      b.style.transform = 'rotate(' + rand(-50, 50) + 'deg)';
+      els.restBurst.appendChild(b);
     }
-    askAd({
-      title: '짝눈 1회 수선',
-      desc: '광고 시청 후 <b>짝눈 불량 1개</b>가 수선되고 일당이 복구돼요.',
-      confirm: '광고 보고 수선',
-      kind: 'rewardedRepair',
-      onReward: function () {
-        els.repairOffer.hidden = true;
-        repairCurrentDefect(phase === 'done' && taps.some(function (t) { return t.acc === 'defect'; }));
-      }
+  }
+
+  els.restBanner.addEventListener('click', function () {
+    SFX.unlock();
+    openRestCard();
+  });
+
+  els.restAd.addEventListener('click', function () {
+    closeModal('restModal');
+    AdBridge.show('interstitialRest').then(function () {
+      SFX.play('ui');
+      toast('이어서 톡톡!');
     });
   });
 
-  function repairCurrentDefect(visual) {
-    if (state.defects <= 0) return;
-    state.defects -= 1;
-    state.repaired += 1;
-
-    var grade = GRADES[state.gradeIndex];
-    var gap = (CONFIG.pay.perfect - CONFIG.pay.defect) * grade.mult * (isBoosted() ? 2 : 1);
-    gap = Math.round(gap / 10) * 10;
-    state.today += gap;
-
-    if (visual) {
-      animateRepair();
-      els.verdict.hidden = false;
-      els.verdict.className = 'verdict is-repair';
-      els.verdictTitle.textContent = '수선 완료!';
-      els.verdictSub.textContent = '+' + won(gap);
-      els.dollSvg.classList.remove('is-ouch');
-      els.dollSvg.classList.add('is-happy');
-      var mouth = document.getElementById('dollMouth');
-      if (mouth) mouth.setAttribute('d', defaultMouth());
-      var sweat = els.fxLayer.querySelector('.sweat-drop');
-      if (sweat) sweat.remove();
-      spawnConfetti(8);
-      SFX.play('perfect');
-      window.setTimeout(function () {
-        if (els.verdictTitle.textContent === '수선 완료!') els.verdict.hidden = true;
-      }, 1400);
-    } else {
-      toast('짝눈 1개를 수선했어요 · +' + won(gap));
-      SFX.play('good');
-      if (advanceTimer == null && phase !== 'done') {
-        // 새 인형이 이미 나온 상태 — 흐름 유지
-      }
-    }
-
-    render();
-    saveState();
-  }
-
-  function defaultMouth() {
-    return state.doll === 'bear'
-      ? 'M160 201 q-12 16 -25 5 M160 201 q12 16 25 5'
-      : 'M160 212 q-10 13 -21 3 M160 212 q10 13 21 3';
-  }
-
-  // 눈 두 개를 제자리로 부드럽게 옮겨요.
-  function animateRepair() {
-    var targets = DOLLS[state.doll].eyes;
-    var eyes = els.eyesLayer.querySelectorAll('.eye');
-    eyes.forEach(function (eye, i) {
-      var t = targets[i] || targets[0];
-      var from = eye.transform.baseVal.consolidate
-        ? readTransform(eye)
-        : { x: t.x, y: t.y, rot: 0, scale: 1 };
-      var start = performance.now();
-      var dur = 450;
-      function step(now) {
-        var p = Math.min(1, (now - start) / dur);
-        var e = 1 - Math.pow(1 - p, 3);
-        var x = lerp(from.x, t.x, e);
-        var y = lerp(from.y, t.y, e);
-        var rot = lerp(from.rot, 0, e);
-        var sc = lerp(from.scale, 1, e);
-        eye.setAttribute('transform',
-          'translate(' + x.toFixed(2) + ' ' + y.toFixed(2) + ') rotate(' + rot.toFixed(1) + ') scale(' + sc.toFixed(3) + ')');
-        var iris = eye.querySelector('.eye-iris');
-        if (iris) {
-          iris.setAttribute('cx', lerp(parseFloat(iris.getAttribute('cx')) || 0, 0.6, e).toFixed(2));
-          iris.setAttribute('cy', lerp(parseFloat(iris.getAttribute('cy')) || 0, 0.4, e).toFixed(2));
-        }
-        if (p < 1) window.requestAnimationFrame(step);
-      }
-      window.requestAnimationFrame(step);
-    });
-  }
-
-  function readTransform(eye) {
-    var m = eye.transform.baseVal.consolidate();
-    if (!m) return { x: 160, y: 150, rot: 0, scale: 1 };
-    var mtx = m.matrix;
-    return {
-      x: mtx.e,
-      y: mtx.f,
-      rot: Math.atan2(mtx.b, mtx.a) * 180 / Math.PI,
-      scale: Math.sqrt(mtx.a * mtx.a + mtx.b * mtx.b)
-    };
-  }
+  els.restSkip.addEventListener('click', function () {
+    closeModal('restModal');
+    SFX.play('ui');
+  });
 
   /* ---------------------------------------------------------
-     10. 광고 브리지 + 데모 광고
+     11. 광고 브리지 + 데모 광고
      --------------------------------------------------------- */
   var AdBridge = {
     adapter: null,
@@ -1018,18 +872,34 @@
   };
   window.DollEyeAdBridge = AdBridge;
 
+  /* 프로모션 브리지 (사업자 등록 + 프로모션 코드 발급 후 호스트에서 연결) */
+  var PromotionBridge = {
+    adapter: null,
+    register: function (adapter) {
+      if (adapter && typeof adapter.grant === 'function') this.adapter = adapter;
+    },
+    grant: function (code) {
+      if (!this.adapter) return Promise.resolve({ granted: false, stub: true });
+      try {
+        return Promise.resolve(this.adapter.grant(code));
+      } catch (e) {
+        return Promise.resolve({ granted: false, error: true });
+      }
+    }
+  };
+  window.DollEyePromotion = PromotionBridge;
+
   function demoAd(kind) {
     return new Promise(function (resolve) {
-      var rewarded = kind !== 'interstitialBoxComplete';
+      var rewarded = kind !== 'interstitialRest';
       var total = CONFIG.demoAdSeconds * 1000;
-      var start = 0;
 
       els.adPlayerKind.textContent = rewarded ? '보상형 광고 (데모)' : '전면 광고 (데모)';
       els.adPlayerFill.style.width = '0%';
       els.adPlayerLeft.textContent = CONFIG.demoAdSeconds + '초';
       openModal('adPlayerModal');
 
-      start = performance.now();
+      var start = performance.now();
       function tick(now) {
         var p = Math.min(1, (now - start) / total);
         els.adPlayerFill.style.width = (p * 100).toFixed(1) + '%';
@@ -1067,7 +937,7 @@
       if (res.rewarded) {
         if (job.onReward) job.onReward();
       } else {
-        toast('광고를 끝까지 봐야 보상이 적용돼요');
+        toast('광고를 끝까지 봐야 적용돼요');
         if (job.onNoReward) job.onNoReward();
       }
     });
@@ -1078,172 +948,101 @@
     closeModal('adNoticeModal');
   });
 
-  /* 30초 일당 2배 */
-  els.boostBtn.addEventListener('click', function () {
+  /* 30초 집중 모드 */
+  els.focusBtn.addEventListener('click', function () {
     SFX.unlock();
-    if (isBoosted()) return;
+    if (isFocus()) return;
     askAd({
-      title: '30초 동안 일당 2배',
-      desc: '광고 시청 후 <b>30초 동안 일당 2배</b>가 적용돼요.',
-      confirm: '광고 보고 2배 받기',
-      kind: 'rewardedDoubleWage',
+      title: '30초 집중 모드',
+      desc: '광고를 끝까지 보면 <b>30초 동안 오늘의 가상 기록이 2배</b>로 쌓여요.',
+      confirm: '광고 보고 시작',
+      kind: 'rewardedFocus',
       onReward: function () {
-        state.boostUntil = Date.now() + CONFIG.boostSeconds * 1000;
-        SFX.play('box');
-        toast(CONFIG.boostSeconds + '초 동안 가상 일당 2배!');
+        state.focusUntil = Date.now() + CONFIG.focusSeconds * 1000;
+        SFX.play('fanfare');
+        toast(CONFIG.focusSeconds + '초 동안 기록 2배');
         render();
         saveState();
-        startBoostTimer();
+        startFocusTimer();
       }
     });
   });
 
-  function startBoostTimer() {
-    if (boostInterval) return;
-    boostInterval = window.setInterval(function () {
-      if (!isBoosted()) {
-        window.clearInterval(boostInterval);
-        boostInterval = null;
+  function startFocusTimer() {
+    if (focusInterval) return;
+    focusInterval = window.setInterval(function () {
+      if (!isFocus()) {
+        window.clearInterval(focusInterval);
+        focusInterval = null;
         render();
         return;
       }
-      renderBoost();
+      renderFocus();
     }, 500);
   }
 
-  /* ---------------------------------------------------------
-     11. 박스 완성
-     --------------------------------------------------------- */
-  function showBoxModal() {
-    if (!boxPending) return;
-    state.boxesDone += 1;
-    state.boxNum += 1;
-    state.boxCount = 0;
-
-    var bonus = Math.round(CONFIG.boxBonus * GRADES[state.gradeIndex].mult);
-    state.today += bonus;
-
-    els.boxModalNo.textContent = String(state.boxNum - 1);
-    els.boxModalCount.textContent = String(CONFIG.boxSize);
-    els.boxBonusText.textContent = '+' + won(bonus);
-    els.boxSummary.innerHTML =
-      '<span>오늘 포장<strong>' + state.boxesDone + '박스</strong></span>' +
-      '<span>누적 인형<strong>' + state.total.toLocaleString('ko-KR') + '개</strong></span>' +
-      '<span>최고 콤보<strong>' + state.bestCombo + '연속</strong></span>';
-
-    burstBoxConfetti();
-    openModal('boxModal');
-    SFX.play('box');
-    render();
-    saveState();
-  }
-
-  function burstBoxConfetti() {
-    if (!els.boxBurst) return;
-    els.boxBurst.innerHTML = '';
-    var colors = ['#ff8e7a', '#ffc94d', '#6fc9b0', '#9da9ff', '#f28fb6'];
-    for (var i = 0; i < 22; i++) {
-      var b = document.createElement('i');
-      b.style.left = rand(2, 96) + '%';
-      b.style.background = colors[i % colors.length];
-      b.style.animationDelay = (Math.random() * 0.45).toFixed(2) + 's';
-      b.style.transform = 'rotate(' + rand(-50, 50) + 'deg)';
-      els.boxBurst.appendChild(b);
+  /* 스페셜 리본 열기 */
+  els.ribbonBtn.addEventListener('click', function () {
+    SFX.unlock();
+    if (state.specialRibbon) {
+      toast('스페셜 리본이 열려 있어요');
+      return;
     }
-  }
-
-  els.boxAd.addEventListener('click', function () {
-    closeModal('boxModal');
-    AdBridge.show('interstitialBoxComplete').then(function () {
-      startNextBox();
+    askAd({
+      title: '스페셜 리본 열기',
+      desc: '광고를 끝까지 보면 <b>반짝이는 스페셜 리본 색</b>이 열려요. 한 번 열면 계속 써요.',
+      confirm: '광고 보고 열기',
+      kind: 'rewardedSpecialRibbon',
+      onReward: function () {
+        state.specialRibbon = true;
+        SFX.play('fanfare');
+        toast('스페셜 리본이 열렸어요!');
+        render();
+        saveState();
+        if (phase !== 'done') newDoll();
+      }
     });
   });
-
-  els.boxSkip.addEventListener('click', function () {
-    closeModal('boxModal');
-    startNextBox();
-  });
-
-  function startNextBox() {
-    boxPending = false;
-    els.boxBurst.innerHTML = '';
-    newDoll();
-    toast('새 박스 ' + state.boxNum + ' 시작!');
-    render();
-  }
 
   /* ---------------------------------------------------------
      12. 화면 렌더
      --------------------------------------------------------- */
   function render() {
     els.totalDolls.textContent = state.total.toLocaleString('ko-KR');
-    els.todayWage.textContent = won(state.today);
+    els.todayRecord.textContent = won(state.todayRecord);
 
-    var g = GRADES[state.gradeIndex];
-    els.gradeEmoji.textContent = g.emoji;
-    els.gradeName.textContent = g.name;
+    els.goalTotal.textContent = String(CONFIG.dailyGoal);
+    els.goalDone.textContent = String(Math.min(state.todayCount, CONFIG.dailyGoal));
+    var ratio = Math.min(1, state.todayCount / CONFIG.dailyGoal);
+    els.goalFill.style.width = (ratio * 100).toFixed(1) + '%';
+    els.goalBox.classList.toggle('is-done', state.todayCount >= CONFIG.dailyGoal);
 
-    var next = GRADES[state.gradeIndex + 1];
-    if (next) {
-      els.gradeNext.innerHTML = '다음 등급까지 <b>' + Math.max(0, next.min - state.total) + '</b>개';
-      var span = next.min - g.min;
-      var ratio = Math.min(1, Math.max(0, (state.total - g.min) / span));
-      els.gradeFill.style.width = (ratio * 100).toFixed(1) + '%';
-    } else {
-      els.gradeNext.innerHTML = '<b>최고 등급</b> 달성!';
-      els.gradeFill.style.width = '100%';
-    }
-
-    els.comboBadge.hidden = state.combo < 2;
-    els.comboValue.textContent = state.combo;
-
-    els.boxNo.textContent = state.boxNum;
-    els.boxDone.textContent = state.boxCount;
-    renderBoxDots();
-
-    els.repairBadge.hidden = state.defects <= 0;
-    els.repairBadge.textContent = state.defects;
-    els.repairBtn.disabled = state.defects <= 0;
-
-    renderBoost();
+    renderFocus();
 
     els.soundBtn.classList.toggle('is-muted', state.muted);
     els.soundBtn.setAttribute('aria-pressed', String(!state.muted));
     els.soundBtn.setAttribute('aria-label', state.muted ? '소리 켜기' : '소리 끄기');
 
-    els.guideBtn.setAttribute('aria-pressed', String(!!state.guide));
-    els.guideBtn.setAttribute('aria-label', state.guide ? '눈 위치 가이드 켜짐' : '눈 위치 가이드 꺼짐');
+    els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
 
     els.tabBear.classList.toggle('is-active', state.doll === 'bear');
     els.tabRabbit.classList.toggle('is-active', state.doll === 'rabbit');
     els.tabBear.setAttribute('aria-selected', String(state.doll === 'bear'));
     els.tabRabbit.setAttribute('aria-selected', String(state.doll === 'rabbit'));
+
+    var special = !!state.specialRibbon;
+    els.ribbonBtn.disabled = special;
+    els.ribbonLabel.textContent = special ? '스페셜 리본 열림' : '광고 보고 스페셜 리본 열기';
+    els.ribbonNote.textContent = special ? '반짝이는 리본으로 계속 만들어요' : '광고 시청 후 반짝이는 리본';
   }
 
-  function renderBoxDots() {
-    if (els.boxDots.children.length !== CONFIG.boxSize) {
-      els.boxDots.innerHTML = '';
-      for (var i = 0; i < CONFIG.boxSize; i++) {
-        var d = document.createElement('span');
-        d.className = 'box-dot';
-        els.boxDots.appendChild(d);
-      }
-    }
-    for (var j = 0; j < els.boxDots.children.length; j++) {
-      var dot = els.boxDots.children[j];
-      dot.className = 'box-dot' +
-        (j < state.boxCount ? ' is-on' : '') +
-        (j === state.boxCount && state.boxCount < CONFIG.boxSize ? ' is-next' : '');
-    }
-  }
-
-  function renderBoost() {
-    var on = isBoosted();
-    els.boostChip.hidden = !on;
-    els.boostBtn.disabled = on;
-    els.boostLabel.textContent = on ? '지금 일당 2배 적용 중' : '광고 보고 30초 일당 2배';
+  function renderFocus() {
+    var on = isFocus();
+    els.focusChip.hidden = !on;
+    els.focusBtn.disabled = on;
+    els.focusLabel.textContent = on ? '집중 모드 진행 중' : '광고 보고 30초 집중 모드';
     if (on) {
-      els.boostTimer.textContent = String(Math.max(0, Math.ceil((state.boostUntil - Date.now()) / 1000)));
+      els.focusTimer.textContent = String(Math.max(0, Math.ceil((state.focusUntil - Date.now()) / 1000)));
     }
   }
 
@@ -1284,7 +1083,7 @@
     void els.toast.offsetWidth;
     els.toast.style.animation = '';
     window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(function () { els.toast.hidden = true; }, 2000);
+    toastTimer = window.setTimeout(function () { els.toast.hidden = true; }, 2200);
   }
 
   /* 모달 닫기 버튼(배경·X) */
@@ -1299,9 +1098,7 @@
   document.addEventListener('keydown', function (evt) {
     if (evt.key === 'Escape') {
       var open = document.querySelector('.modal:not([hidden])');
-      if (open && open.id !== 'adPlayerModal' && open.id !== 'boxModal') {
-        closeModal(open.id);
-      }
+      if (open && open.id !== 'adPlayerModal') closeModal(open.id);
     }
   });
 
@@ -1318,8 +1115,7 @@
     toast(state.muted ? '소리를 껐어요' : '소리를 켰어요');
   });
 
-  els.guideBtn.addEventListener('click', function () {
-    SFX.unlock();
+  els.guideSwitch.addEventListener('click', function () {
     state.guide = !state.guide;
     renderGuide();
     render();
@@ -1330,8 +1126,8 @@
 
   function switchDoll(doll) {
     if (state.doll === doll) return;
-    if (phase === 'done' || phase === 'locked' || boxPending) {
-      toast('이번 인형을 마무리한 뒤 바꿀 수 있어요');
+    if (phase === 'done') {
+      toast('새 인형이 올라오면 바꿀 수 있어요');
       return;
     }
     SFX.unlock();
@@ -1349,12 +1145,9 @@
   /* ---------------------------------------------------------
      15. 뒤로가기 · 종료 확인
      --------------------------------------------------------- */
-  var guardPushed = false;
-
   function pushGuard() {
     try {
       window.history.pushState({ dollEyeJob: true }, '');
-      guardPushed = true;
     } catch (e) { /* noop */ }
   }
 
@@ -1404,21 +1197,20 @@
   });
 
   /* ---------------------------------------------------------
-     16. 가상 일당 안내 · 초기화
+     16. 가상 기록 안내 · 초기화
      --------------------------------------------------------- */
-  els.wageInfoBtn.addEventListener('click', function () {
-    openModal('wageModal');
+  els.recordInfoBtn.addEventListener('click', function () {
+    openModal('recordModal');
   });
 
   els.resetBtn.addEventListener('click', function () {
     try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* noop */ }
     state = defaultState();
-    state.gradeIndex = 0;
     window.DollEyeApp.state = state;
     SFX.setMuted(state.muted);
-    closeModal('wageModal');
-    newDoll();
+    closeModal('recordModal');
     render();
+    newDoll();
     saveState();
     toast('기록을 초기화했어요');
   });
@@ -1430,10 +1222,6 @@
     loadState();
     SFX.setMuted(!!state.muted);
 
-    if (state.boxCount >= CONFIG.boxSize) state.boxCount = 0;
-    state.gradeIndex = gradeIndexFor(state.total);
-
-    els.boxSize.textContent = String(CONFIG.boxSize);
     els.dollSvg.addEventListener('pointerdown', onDollPointerDown);
 
     // iOS 사파리/토스 웹뷰 오디오 잠금 해제: 첫 터치마다 확인
@@ -1451,11 +1239,10 @@
     window.addEventListener('pagehide', saveState);
 
     render();
-    renderBoxDots();
     newDoll();
     render();
 
-    if (state.boostUntil > Date.now()) startBoostTimer();
+    if (isFocus()) startFocusTimer();
 
     // 뒤로가기 가드 (첫 화면에서 종료 확인 모달)
     pushGuard();

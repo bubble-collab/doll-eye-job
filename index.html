@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#FFF3E4" />
-  <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙여 박스를 완성하는 힐링 미니게임, 인형 눈알 붙이기." />
+  <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙이며 잡생각을 비우는 힐링 엔터테인먼트, 인형 눈알 붙이기." />
   <title>인형 눈알 붙이기</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -31,32 +31,33 @@
       </button>
     </header>
 
-    <!-- 오늘의 작업 현황 -->
-    <section class="hud" aria-label="작업 현황">
-      <div class="hud-item">
-        <span class="hud-label">누적 작업</span>
-        <span class="hud-value"><b id="totalDolls">0</b><i>개</i></span>
+    <!-- 상단 카운터: 완성한 인형 수 + 오늘의 가상 기록 + 은은한 오늘의 목표 -->
+    <section class="status" aria-label="오늘의 기록">
+      <div class="status-row">
+        <div class="status-item">
+          <span class="status-label">완성한 인형</span>
+          <span class="status-value"><b id="totalDolls">0</b><i>개</i></span>
+        </div>
+        <span class="status-sep" aria-hidden="true"></span>
+        <div class="status-item status-item--record">
+          <span class="status-label">
+            오늘의 가상 기록
+            <button class="info-dot" id="recordInfoBtn" type="button" aria-label="가상 기록 안내">i</button>
+          </span>
+          <span class="status-value status-value--record">
+            <b id="todayRecord">0원</b>
+            <span class="focus-chip" id="focusChip" hidden>집중 <b id="focusTimer">30</b>초</span>
+          </span>
+        </div>
       </div>
-      <span class="hud-sep" aria-hidden="true"></span>
-      <div class="hud-item hud-item--grow">
-        <span class="hud-label">
-          오늘의 가상 일당
-          <button class="info-dot" id="wageInfoBtn" type="button" aria-label="가상 일당 안내">i</button>
-        </span>
-        <span class="hud-value hud-value--wage">
-          <b id="todayWage">₩0</b>
-          <span class="boost-chip" id="boostChip" hidden>×2 <b id="boostTimer">30</b>초</span>
-        </span>
-      </div>
-    </section>
 
-    <!-- 숙련도 -->
-    <section class="grade" aria-label="숙련도">
-      <div class="grade-row">
-        <span class="grade-name"><span id="gradeEmoji" aria-hidden="true">🧵</span><b id="gradeName">수습생</b></span>
-        <span class="grade-next" id="gradeNext">다음 등급까지 <b>30</b>개</span>
+      <div class="goal" id="goalBox">
+        <div class="goal-head">
+          <span class="goal-label">오늘의 목표</span>
+          <span class="goal-count"><b id="goalDone">0</b> / <span id="goalTotal">100</span></span>
+        </div>
+        <div class="goal-track"><span class="goal-fill" id="goalFill"></span></div>
       </div>
-      <div class="grade-track"><span class="grade-fill" id="gradeFill"></span></div>
     </section>
 
     <!-- 인형 선택 -->
@@ -69,16 +70,8 @@
       </button>
     </div>
 
-    <!-- 작업대 -->
+    <!-- 인형 (화면의 주인공) -->
     <main class="stage" id="stage">
-      <div class="stage-bar">
-        <span class="combo-badge" id="comboBadge" hidden>COMBO <b id="comboValue">0</b></span>
-        <span class="stage-hint" id="stageHint">왼쪽 눈부터 톡!</span>
-        <button class="guide-toggle" id="guideBtn" type="button" aria-pressed="true" aria-label="눈 위치 가이드 켜짐">
-          가이드<i aria-hidden="true"></i>
-        </button>
-      </div>
-
       <div class="doll-area" id="dollArea">
         <svg id="dollSvg" class="doll-svg" viewBox="0 0 320 320" role="img" aria-label="눈이 없는 인형. 인형 얼굴을 톡톡 눌러 눈을 붙여 주세요.">
           <defs>
@@ -100,6 +93,12 @@
               <stop offset="0%" stop-color="#FFFFFF"/>
               <stop offset="100%" stop-color="#FDEFE2"/>
             </linearGradient>
+            <!-- 광고로 여는 스페셜 리본 색 -->
+            <linearGradient id="ribbonSpecial" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FFE28A"/>
+              <stop offset="45%" stop-color="#FFC24D"/>
+              <stop offset="100%" stop-color="#F0A227"/>
+            </linearGradient>
             <filter id="plushShadow" x="-30%" y="-30%" width="160%" height="170%">
               <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#8C5A34" flood-opacity="0.16"/>
             </filter>
@@ -111,61 +110,45 @@
           <g id="fxLayer"></g>
         </svg>
 
-        <div class="verdict" id="verdict" hidden aria-live="polite">
-          <b id="verdictTitle">PERFECT!</b>
-          <span id="verdictSub">+₩300</span>
-        </div>
-
         <div class="pop-layer" id="popLayer" aria-hidden="true"></div>
-
-        <!-- 짝눈 불량 수선 제안 -->
-        <div class="repair-offer" id="repairOffer" hidden>
-          <div class="repair-offer__text">
-            <b>짝눈 불량 발생!</b>
-            <span>광고 보고 1회 수선하면 일당이 복구돼요.</span>
-          </div>
-          <button class="btn btn--small btn--primary" id="repairNow" type="button">광고 보고 수선</button>
-          <button class="repair-skip" id="repairSkip" type="button">그냥 넘기기</button>
-        </div>
       </div>
 
-      <p class="stage-caption" id="stageCaption">눈이 없는 인형이에요. <b>왼쪽 눈 → 오른쪽 눈</b> 순서로 톡톡!</p>
+      <!-- 지금 할 일 한 줄 -->
+      <p class="hint" id="hint" aria-live="polite">왼쪽 눈을 톡 눌러 보세요</p>
     </main>
 
-    <!-- 박스 진행도 -->
-    <section class="box-card" aria-label="박스 진행도">
-      <div class="box-head">
-        <span class="box-title">📦 박스 <b id="boxNo">1</b></span>
-        <span class="box-count"><b id="boxDone">0</b> / <span id="boxSize">10</span> 완성</span>
-      </div>
-      <div class="box-dots" id="boxDots" aria-hidden="true"></div>
-    </section>
+    <!-- 10개마다: 흐름을 끊지 않는 가벼운 쉼표 배너 -->
+    <button class="rest-banner" id="restBanner" type="button" hidden>
+      <span class="rest-banner__text">🌿 인형 <b id="restBannerCount">10</b>개 완성! 잠깐 쉬어갈까요?</span>
+      <span class="rest-banner__cta">쉬어가기</span>
+    </button>
 
-    <!-- 광고 보상 슬롯 -->
-    <section class="actions" aria-label="광고 보상">
-      <button class="ad-btn ad-btn--primary" id="boostBtn" type="button">
-        <span class="ad-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-        </span>
-        <span class="ad-text">
-          <b id="boostLabel">광고 보고 30초 일당 2배</b>
-          <small>광고 시청 후 보상이 적용돼요</small>
-        </span>
-      </button>
+    <!-- 하단: 광고 슬롯 (인형 탭과 충분히 떨어뜨림) -->
+    <div class="bottom">
+      <section class="actions" aria-label="광고">
+        <button class="ad-btn" id="focusBtn" type="button">
+          <span class="ad-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+          </span>
+          <span class="ad-text">
+            <b id="focusLabel">광고 보고 30초 집중 모드</b>
+            <small>광고 시청 후 가상 기록 2배</small>
+          </span>
+        </button>
 
-      <button class="ad-btn" id="repairBtn" type="button">
-        <span class="ad-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M7 17 17 7M14 4l6 6-2.5 2.5-6-6zM4 20l4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span>
-        <span class="ad-text">
-          <b>짝눈 불량 1회 수선</b>
-          <small>광고 시청 후 수선이 적용돼요</small>
-        </span>
-        <span class="ad-badge" id="repairBadge" hidden>0</span>
-      </button>
-    </section>
+        <button class="ad-btn" id="ribbonBtn" type="button">
+          <span class="ad-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 3.5 14 9l6 .6-4.4 3.9 1.3 5.9L12 16.6 7.1 19.4l1.3-5.9L4 9.6 10 9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="ad-text">
+            <b id="ribbonLabel">광고 보고 스페셜 리본 열기</b>
+            <small id="ribbonNote">광고 시청 후 반짝이는 리본</small>
+          </span>
+        </button>
+      </section>
 
-    <p class="footnote">표시되는 일당은 <b>게임 내 가상 재화</b>이며 실제 현금·토스포인트로 지급되지 않아요.</p>
+      <p class="footnote">표시되는 기록은 <b>가상의 숫자</b>이며 실제 현금·토스포인트로 지급되지 않아요.</p>
+    </div>
   </div>
 
   <!-- ================= 모달 ================= -->
@@ -185,23 +168,29 @@
     </div>
   </div>
 
-  <!-- 가상 일당 안내 -->
-  <div class="modal" id="wageModal" hidden>
-    <div class="modal-backdrop" data-close="wageModal"></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="wageTitle">
+  <!-- 가상 기록 안내 -->
+  <div class="modal" id="recordModal" hidden>
+    <div class="modal-backdrop" data-close="recordModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recordTitle">
       <span class="pill pill--mint">안내</span>
-      <h2 id="wageTitle">가상 일당이에요</h2>
-      <p class="modal-lead">이 앱은 앱인토스 미니앱 <b>프로토타입</b>이에요.</p>
+      <h2 id="recordTitle">가상 기록이에요</h2>
+      <p class="modal-lead">이 앱은 인형에 눈을 붙이며 잠깐 쉬어가는 <b>미니앱 프로토타입</b>이에요.</p>
       <ul class="modal-list">
-        <li>표시되는 일당은 게임을 즐기기 위한 <b>가상 재화</b>예요.</li>
+        <li>오늘의 가상 기록은 앱을 즐기기 위한 <b>가상의 숫자</b>예요.</li>
         <li>실제 현금, 토스포인트, 비즈월렛으로 <b>지급되지 않아요.</b></li>
-        <li>작업 기록은 이 기기의 브라우저에만 저장돼요.</li>
+        <li>기록은 이 기기의 브라우저에만 저장돼요.</li>
       </ul>
+      <div class="switch-row">
+        <span>눈 위치 가이드 보기</span>
+        <button class="switch" id="guideSwitch" type="button" role="switch" aria-checked="true" aria-label="눈 위치 가이드">
+          <i aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="modal-actions">
         <button class="btn btn--ghost btn--danger" id="resetBtn" type="button">기록 초기화</button>
-        <button class="btn btn--primary" type="button" data-close="wageModal">확인</button>
+        <button class="btn btn--primary" type="button" data-close="recordModal">확인</button>
       </div>
-      <button class="modal-x" type="button" data-close="wageModal" aria-label="닫기">✕</button>
+      <button class="modal-x" type="button" data-close="recordModal" aria-label="닫기">✕</button>
     </div>
   </div>
 
@@ -210,9 +199,9 @@
     <div class="modal-backdrop" data-close="adNoticeModal"></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adNoticeTitle">
       <span class="pill pill--ad">광고 안내</span>
-      <h2 id="adNoticeTitle">광고를 보고 보상을 받아요</h2>
-      <p id="adNoticeDesc">광고 시청 후 보상이 적용돼요.</p>
-      <p class="ad-notice-note">광고는 몇 초간 재생되고, 끝까지 보면 보상이 적용돼요. 중간에 닫으면 보상이 지급되지 않아요.</p>
+      <h2 id="adNoticeTitle">광고를 보고 이어서 즐겨요</h2>
+      <p id="adNoticeDesc">광고 시청 후 적용돼요.</p>
+      <p class="ad-notice-note">광고는 몇 초간 재생되고, 끝까지 보면 적용돼요. 중간에 닫으면 적용되지 않아요.</p>
       <div class="modal-actions">
         <button class="btn btn--ghost" id="adCancel" type="button">다음에</button>
         <button class="btn btn--primary" id="adConfirm" type="button">광고 보기</button>
@@ -236,23 +225,23 @@
         <div class="ad-scene__spark ad-scene__spark--2">✦</div>
       </div>
       <div class="ad-player__bar"><span id="adPlayerFill"></span></div>
-      <p class="ad-player__note">데모 광고예요. 실제 광고가 아닙니다.<br />끝까지 보면 보상이 적용돼요.</p>
+      <p class="ad-player__note">데모 광고예요. 실제 광고가 아닙니다.<br />끝까지 보면 적용돼요.</p>
     </div>
   </div>
 
-  <!-- 박스 완성 -->
-  <div class="modal" id="boxModal" hidden>
-    <div class="modal-backdrop"></div>
-    <div class="modal-card modal-card--box" role="dialog" aria-modal="true" aria-labelledby="boxTitle">
-      <div class="box-burst" id="boxBurst" aria-hidden="true"></div>
-      <span class="pill pill--coral">박스 완성</span>
-      <h2 id="boxTitle">박스 <span id="boxModalNo">1</span> 포장 완료!</h2>
-      <p>인형 <b id="boxModalCount">10</b>개를 예쁘게 포장했어요.<br />박스 보너스 <b class="money" id="boxBonusText">+₩2,000</b>가 가상 일당에 더해졌어요.</p>
-      <div class="box-summary" id="boxSummary"></div>
-      <p class="ad-pre">새 박스를 시작하기 전에 <b>광고가 한 번 재생</b>돼요.</p>
+  <!-- 10개마다 쉬어가는 카드 (사용자가 배너를 눌렀을 때만) -->
+  <div class="modal" id="restModal" hidden>
+    <div class="modal-backdrop" data-close="restModal"></div>
+    <div class="modal-card modal-card--rest" role="dialog" aria-modal="true" aria-labelledby="restTitle">
+      <div class="rest-burst" id="restBurst" aria-hidden="true"></div>
+      <span class="pill pill--coral" id="restPill">잠깐 쉬어가요</span>
+      <h2 id="restTitle">인형 10개 완성!</h2>
+      <p id="restMessage">어깨 한 번 펴고, 물 한 모금 마셔요.</p>
+      <div class="rest-summary" id="restSummary"></div>
+      <p class="ad-pre">이어서 만들기 전에 <b>광고가 한 번 재생</b>돼요.</p>
       <div class="modal-actions">
-        <button class="btn btn--ghost" id="boxSkip" type="button">광고 없이 계속</button>
-        <button class="btn btn--primary" id="boxAd" type="button">광고 보고 계속</button>
+        <button class="btn btn--ghost" id="restSkip" type="button">광고 없이 계속</button>
+        <button class="btn btn--primary" id="restAd" type="button">광고 보고 계속</button>
       </div>
     </div>
   </div>
