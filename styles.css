@@ -945,7 +945,7 @@ body {
 .rest-banner {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(168px + env(safe-area-inset-bottom));
   z-index: 90;
   transform: translateX(-50%);
   display: flex;
@@ -984,7 +984,7 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom));
+  bottom: calc(168px + env(safe-area-inset-bottom));
   z-index: 200;
   transform: translateX(-50%);
   max-width: calc(100vw - 40px);
