@@ -422,8 +422,6 @@ body {
   position: absolute;
   inset: 0;
   background: rgba(38, 32, 20, 0.38);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease both;
 }
 
@@ -665,8 +663,6 @@ body {
   position: absolute;
   inset: 0;
   background: rgba(38, 32, 20, 0.42);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease both;
 }
 

@@ -63,10 +63,10 @@
   /* 배경 테마: 크림 · 살구 · 민트 · 버터 · 라벤더 (+ 광고로 여는 스페셜) */
   var THEMES = [
     { name: '크림',   bg: '#F6F3EB', sheet: '#F5F0E4', soft: '#F1EDE1', line: '#E7E1D2', swatch: '#EFE9DA' },
-    { name: '살구',   bg: '#F9EFE7', sheet: '#F7EBE2', soft: '#F4E8DF', line: '#EEDFD3', swatch: '#EBC3AE' },
-    { name: '민트',   bg: '#EFF4EF', sheet: '#EAF1EA', soft: '#E7EEE7', line: '#DEE8DE', swatch: '#B9D4C2' },
-    { name: '버터',   bg: '#F8F3E3', sheet: '#F6EFDC', soft: '#F2EBD7', line: '#EAE2CA', swatch: '#E4D296' },
-    { name: '라벤더', bg: '#F2F0F7', sheet: '#EFEDF6', soft: '#ECE9F3', line: '#E4E0ED', swatch: '#C6BFDE' },
+    { name: '살구',   bg: '#F9EDE3', sheet: '#F7E9DE', soft: '#F4E8DF', line: '#EEDFD3', swatch: '#EBC3AE' },
+    { name: '민트',   bg: '#EAF1EA', sheet: '#E6EEE5', soft: '#E7EEE7', line: '#DEE8DE', swatch: '#B9D4C2' },
+    { name: '버터',   bg: '#F7F1DC', sheet: '#F4EDD6', soft: '#F2EBD7', line: '#EAE2CA', swatch: '#E4D296' },
+    { name: '라벤더', bg: '#EFEDF6', sheet: '#ECE9F3', soft: '#ECE9F3', line: '#E4E0ED', swatch: '#C6BFDE' },
     { name: '스페셜', bg: '#FBF0E0', sheet: '#F9EDDB', soft: '#F6E7D2', line: '#EFDFC8', swatch: 'special' }
   ];
 
