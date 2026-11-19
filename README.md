@@ -274,3 +274,15 @@ export default defineConfig({
 - 실제 리워드(토스포인트/비즈월렛) 지급은 별도 제휴·API가 필요합니다. 현재는 가상 재화입니다.
 - 기록은 기기 브라우저에만 저장됩니다(서버 동기화 없음).
 - 인형 그림은 SVG 도형 기반이라 실제 봉제 질감과는 다릅니다(프로토타입 수준).
+
+---
+
+## 8. 웹 배포 (GitHub Pages)
+
+휴대폰에서 바로 열어볼 수 있도록 GitHub Pages에 올려 두었습니다.
+
+- **접속 주소**: https://bubble-collab.github.io/doll-eye-job/
+- **저장소**: https://github.com/bubble-collab/doll-eye-job (기본 브랜치 `main`)
+- Pages는 **`gh-pages` 브랜치**를 배포 소스로 사용합니다. 파일을 고칠 때는 `main`에 커밋한 뒤
+  `git push origin main` 과 `git push origin gh-pages` 를 함께 해 주세요(예: `git branch -f gh-pages main`).
+- 배포는 push 후 보통 30초~1분 안에 반영됩니다.
