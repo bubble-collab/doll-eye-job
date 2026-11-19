@@ -437,6 +437,7 @@
     restBannerCount: $('restBannerCount'),
     focusBtn: $('focusBtn'),
     focusLabel: $('focusLabel'),
+    focusNote: $('focusNote'),
     ribbonBtn: $('ribbonBtn'),
     ribbonLabel: $('ribbonLabel'),
     ribbonNote: $('ribbonNote'),
@@ -520,13 +521,14 @@
      7. 톡톡 가이드 (점선 원 + 깜빡이는 포인터)
      --------------------------------------------------------- */
   function pointerMarkup(x, y) {
-    var top = y - 76;
+    var px = x < 160 ? x + 20 : x - 20;
+    var top = y - 92;
     return '' +
       '<g class="tap-pointer">' +
         '<g class="tap-pointer__bob">' +
-          '<rect x="' + (x - 20) + '" y="' + top + '" width="40" height="27" rx="13.5" fill="#ff7a59"/>' +
-          '<path d="M' + (x - 5.5) + ' ' + (top + 25) + ' L' + x + ' ' + (top + 34) + ' L' + (x + 5.5) + ' ' + (top + 25) + ' Z" fill="#ff7a59"/>' +
-          '<text class="tap-pointer__label" x="' + x + '" y="' + (top + 18.5) + '" text-anchor="middle">톡</text>' +
+          '<rect x="' + (px - 19) + '" y="' + top + '" width="38" height="25" rx="12.5" fill="#ff7a59"/>' +
+          '<path d="M' + (px - 5) + ' ' + (top + 23) + ' L' + px + ' ' + (top + 31) + ' L' + (px + 5) + ' ' + (top + 23) + ' Z" fill="#ff7a59"/>' +
+          '<text class="tap-pointer__label" x="' + px + '" y="' + (top + 17.5) + '" text-anchor="middle">톡</text>' +
         '</g>' +
       '</g>';
   }
@@ -730,7 +732,7 @@
     }
 
     // 바로 다음 눈 없는 인형이 올라와요.
-    advanceTimer = window.setTimeout(newDoll, 880);
+    advanceTimer = window.setTimeout(newDoll, 1150);
   }
 
   function checkGoal() {
@@ -1041,6 +1043,7 @@
     els.focusChip.hidden = !on;
     els.focusBtn.disabled = on;
     els.focusLabel.textContent = on ? '집중 모드 진행 중' : '광고 보고 30초 집중 모드';
+    els.focusNote.textContent = on ? '지금 가상 기록 2배 적용 중' : '광고 시청 후 가상 기록 2배';
     if (on) {
       els.focusTimer.textContent = String(Math.max(0, Math.ceil((state.focusUntil - Date.now()) / 1000)));
     }
