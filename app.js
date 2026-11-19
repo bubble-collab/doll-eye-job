@@ -1294,11 +1294,37 @@
     }
   }
 
+  /* 클립보드 권한이 응답하지 않아도 안내가 늦지 않도록 시간을 끊어 둬요. */
+  function withTimeout(promise, ms) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var timer = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        resolve('timeout');
+      }, ms);
+      promise.then(function (value) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(value);
+      }, function () {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve('error');
+      });
+    });
+  }
+
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).then(function () {
+      return withTimeout(navigator.clipboard.writeText(text).then(function () {
         return true;
       }).catch(function () {
+        return false;
+      }), 1200).then(function (ok) {
+        if (ok === true) return true;
         return legacyCopy(text);
       });
     }
