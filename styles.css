@@ -37,6 +37,7 @@ html, body {
 }
 
 body {
+  overflow-x: hidden;
   font-family: var(--font);
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -201,7 +202,7 @@ body {
 }
 
 .doll-svg {
-  width: min(96vw, 50dvh, 380px);
+  width: min(100vw, 52dvh, 400px);
   height: auto;
   display: block;
   overflow: visible;
@@ -246,14 +247,14 @@ body {
 }
 
 /* ---------------- 톡톡 가이드 ---------------- */
-.guide-halo { fill: #C98563; opacity: 0.1; animation: guideHalo 2.2s ease-in-out infinite; }
+.guide-halo { fill: #FFF6E4; opacity: 0.16; animation: guideHalo 2.2s ease-in-out infinite; }
 .guide-ring {
   fill: none;
-  stroke: #C98563;
-  stroke-width: 1.8;
-  stroke-dasharray: 4 7;
+  stroke: #FFFDF6;
+  stroke-width: 2.2;
+  stroke-dasharray: 3 6;
   stroke-linecap: round;
-  opacity: 0.8;
+  opacity: 0.92;
   animation: guideSpin 9s linear infinite;
 }
 .guide-ring.is-soft { opacity: 0.38; }
@@ -263,10 +264,10 @@ body {
 .tap-pointer__bob { animation: pointerBob 1.2s ease-in-out infinite; }
 .tap-pointer__label {
   font-family: var(--font);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: -0.2px;
-  fill: #fff;
+  fill: #B96A4C;
 }
 
 /* ---------------- 한 줄 안내 ---------------- */
@@ -1104,7 +1105,7 @@ body {
   .progress { margin-top: 10px; }
   .progress__count b { font-size: 26px; }
   .progress__label { font-size: 15.5px; }
-  .doll-svg { width: min(88vw, 44dvh, 340px); }
+  .doll-svg { width: min(92vw, 48dvh, 360px); }
   .hint { margin-top: 4px; }
   .summary { padding-top: 10px; }
   .tabbar { padding-top: 2px; }
@@ -1112,7 +1113,7 @@ body {
 }
 
 @media (max-height: 640px) {
-  .doll-svg { width: min(78vw, 34dvh, 280px); }
+  .doll-svg { width: min(82vw, 40dvh, 300px); }
   .notice-line { display: none; }
   .tab__label { font-size: 11px; }
 }
