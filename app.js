@@ -1423,8 +1423,8 @@
     closeOverlay('moreSheet');
     var on = !!state.notify;
     els.notifyTitle.innerHTML = on
-      ? '매일 인형 눈알 알림을<br />보내드리고 있어요'
-      : '매일 인형 눈알 알림을<br />보내드릴까요?';
+      ? '<span>매일 인형 눈알 알림을</span><span>보내드리고 있어요</span>'
+      : '<span>매일 인형 눈알 알림을</span><span>보내드릴까요?</span>';
     els.notifySub.textContent = on
       ? formatNotifyTime(state.notifyAt) + '에 살짝 알려드려요'
       : '눈알 붙일 시간, 살짝 알려드릴게요';

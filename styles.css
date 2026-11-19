@@ -14,7 +14,7 @@
   --ink-3: #8C8576;
   --ink-4: #A9A292;
   --line: #E7E1D2;
-  --track: #E4DDCB;
+  --track: #DFD8C7;
   --fill: #B9AE97;
   --blue: #3182F6;
   --blue-deep: #1B64DA;
@@ -214,7 +214,6 @@ body {
   -webkit-user-select: none;
 }
 
-.doll-shadow { fill: rgba(120, 88, 52, 0.10); filter: blur(4px); }
 
 .doll-svg.is-enter #bodyLayer { animation: dollEnter 0.42s cubic-bezier(0.2, 1.2, 0.35, 1) both; }
 .doll-svg.is-float #bodyLayer { animation: dollFloat 4s ease-in-out infinite; }
@@ -576,6 +575,8 @@ body {
   letter-spacing: -0.8px;
   color: #fff;
 }
+.notify__title span { display: block; }
+
 .notify__sub {
   margin: 0 0 22px;
   font-size: 15px;
