@@ -553,8 +553,8 @@
      7. 톡톡 가이드 (점선 원 + 깜빡이는 포인터)
      --------------------------------------------------------- */
   function pointerMarkup(x, y) {
-    var px = x < 160 ? x + 20 : x - 20;
-    var top = y - 92;
+    var px = x;
+    var top = y - 58;
     return '' +
       '<g class="tap-pointer">' +
         '<g class="tap-pointer__bob">' +

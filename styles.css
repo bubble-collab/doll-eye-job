@@ -201,7 +201,7 @@ body {
 }
 
 .doll-svg {
-  width: min(84vw, 42dvh, 338px);
+  width: min(96vw, 50dvh, 380px);
   height: auto;
   display: block;
   overflow: visible;
@@ -328,21 +328,21 @@ body {
 .summary__left,
 .summary__right {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.4px;
   color: #3B362C;
   white-space: nowrap;
 }
 .summary__left b {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.5px;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 .summary__right {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #6B6454;
   font-variant-numeric: tabular-nums;
@@ -394,7 +394,7 @@ body {
   display: block;
 }
 .tab__label {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.3px;
   line-height: 1;
@@ -1104,7 +1104,7 @@ body {
   .progress { margin-top: 10px; }
   .progress__count b { font-size: 26px; }
   .progress__label { font-size: 15.5px; }
-  .doll-svg { width: min(80vw, 36dvh, 300px); }
+  .doll-svg { width: min(88vw, 44dvh, 340px); }
   .hint { margin-top: 4px; }
   .summary { padding-top: 10px; }
   .tabbar { padding-top: 2px; }
@@ -1112,7 +1112,7 @@ body {
 }
 
 @media (max-height: 640px) {
-  .doll-svg { width: min(74vw, 32dvh, 260px); }
+  .doll-svg { width: min(78vw, 34dvh, 280px); }
   .notice-line { display: none; }
   .tab__label { font-size: 11px; }
 }
