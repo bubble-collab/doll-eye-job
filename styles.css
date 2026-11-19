@@ -388,7 +388,7 @@ body {
   transition: background 0.18s ease, color 0.18s ease, transform 0.14s ease;
 }
 .tab:active { transform: scale(0.96); }
-.tab.is-active { background: #ECE7D9; color: var(--ink); }
+.tab.is-active { background: rgba(60, 50, 30, 0.07); color: var(--ink); }
 
 .tab__icon {
   width: 23px;
@@ -526,7 +526,7 @@ body {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 0;
+  border: 1px solid rgba(60, 50, 30, 0.14);
   border-radius: 50%;
   cursor: pointer;
   background-clip: content-box;

@@ -60,8 +60,15 @@
     }
   };
 
-  var ACCENTS = ['#E98A76', '#79C4AE', '#E7B959', '#9AA6E6', '#E398B4'];
-  var SPECIAL_RIBBON = 'url(#ribbonSpecial)';
+  /* 배경 테마: 크림 · 살구 · 민트 · 버터 · 라벤더 (+ 광고로 여는 스페셜) */
+  var THEMES = [
+    { name: '크림',   bg: '#F6F3EB', sheet: '#F5F0E4', soft: '#F1EDE1', line: '#E7E1D2', swatch: '#EFE9DA' },
+    { name: '살구',   bg: '#F9EFE7', sheet: '#F7EBE2', soft: '#F4E8DF', line: '#EEDFD3', swatch: '#EBC3AE' },
+    { name: '민트',   bg: '#EFF4EF', sheet: '#EAF1EA', soft: '#E7EEE7', line: '#DEE8DE', swatch: '#B9D4C2' },
+    { name: '버터',   bg: '#F8F3E3', sheet: '#F6EFDC', soft: '#F2EBD7', line: '#EAE2CA', swatch: '#E4D296' },
+    { name: '라벤더', bg: '#F2F0F7', sheet: '#EFEDF6', soft: '#ECE9F3', line: '#E4E0ED', swatch: '#C6BFDE' },
+    { name: '스페셜', bg: '#FBF0E0', sheet: '#F9EDDB', soft: '#F6E7D2', line: '#EFDFC8', swatch: 'special' }
+  ];
 
   /* 완성했을 때 건네는 한 줄 (판정 없음 · 실제 부업 후기 감성) */
   var HEAL_LINES = [
@@ -94,19 +101,7 @@
   /* ---------------------------------------------------------
      2. 인형 그림 (SVG)
      --------------------------------------------------------- */
-  function bowMarkup(accent) {
-    return '' +
-      '<g class="doll-bow">' +
-        '<ellipse cx="-19" cy="-1" rx="17" ry="10.5" transform="rotate(-20 -19 -1)" fill="' + accent + '"/>' +
-        '<ellipse cx="19" cy="-1" rx="17" ry="10.5" transform="rotate(20 19 -1)" fill="' + accent + '"/>' +
-        '<ellipse cx="-19" cy="-1" rx="8" ry="5" transform="rotate(-20 -19 -1)" fill="#000" opacity="0.09"/>' +
-        '<ellipse cx="19" cy="-1" rx="8" ry="5" transform="rotate(20 19 -1)" fill="#000" opacity="0.06"/>' +
-        '<circle r="6" fill="' + accent + '"/>' +
-        '<circle r="6" fill="#000" opacity="0.14"/>' +
-      '</g>';
-  }
-
-  function bearBody(accent) {
+  function bearBody() {
     return '' +
       '<g filter="url(#plushShadow)">' +
         // 왼쪽 귀
@@ -132,13 +127,12 @@
         '<ellipse cx="154" cy="196" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.55"/>' +
         '<path id="dollMouth" d="M160 209 q-12 15 -25 5 M160 209 q12 15 25 5" fill="none" stroke="#6a4028" stroke-width="3.4" stroke-linecap="round"/>' +
         // 볼터치
-        '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
-        '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
-        '<g transform="translate(78 74) rotate(-22) scale(0.82)">' + bowMarkup(accent) + '</g>' +
+        '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.34"/>' +
+        '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.34"/>' +
       '</g>';
   }
 
-  function rabbitBody(accent) {
+  function rabbitBody() {
     return '' +
       '<g filter="url(#plushShadow)">' +
         // 귀 (왼쪽)
@@ -168,9 +162,8 @@
           '<path d="M206 221 q24 2 36 0"/>' +
         '</g>' +
         // 볼터치
-        '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
-        '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
-        '<g transform="translate(104 50) rotate(-16) scale(0.66)">' + bowMarkup(accent) + '</g>' +
+        '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.4"/>' +
+        '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.4"/>' +
       '</g>';
   }
 
@@ -345,7 +338,7 @@
       goalDone: false,   // 오늘 목표 달성 표시
       promotionGranted: false,
       specialRibbon: false,
-      theme: null,       // 선택한 리본 색 인덱스 (null이면 매번 바뀜)
+      theme: 0,          // 배경 테마 인덱스 (0 크림 · 1 살구 · 2 민트 · 3 버터 · 4 라벤더 · 5 스페셜)
       focusUntil: 0,
       guide: true,
       muted: false,
@@ -382,7 +375,9 @@
       state.focusUntil = 0;
     }
     if (!DOLLS[state.doll]) state.doll = 'bear';
-    if (state.theme !== null && !ACCENTS[state.theme]) state.theme = null;
+    state.theme = Number(state.theme);
+    if (!THEMES[state.theme]) state.theme = 0;
+    if (state.theme === 5 && !state.specialRibbon) state.theme = 0;
     state.total = Math.max(0, Number(state.total) || 0);
     state.todayCount = Math.max(0, Number(state.todayCount) || 0);
     state.todayRecord = Math.max(0, Number(state.todayRecord) || 0);
@@ -509,14 +504,6 @@
   var bannerTimer = null;
   var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
 
-  function ribbonColor() {
-    if (state.theme !== null && ACCENTS[state.theme]) return ACCENTS[state.theme];
-    if (state.specialRibbon) return SPECIAL_RIBBON;
-    var seed = Number(state.accentSeed) || 0;
-    state.accentSeed = seed + 1;
-    return ACCENTS[seed % ACCENTS.length];
-  }
-
   function newDoll() {
     clearTimeout(advanceTimer);
     advanceTimer = null;
@@ -525,7 +512,7 @@
     taps = [];
     els.eyesLayer.innerHTML = '';
     els.fxLayer.innerHTML = '';
-    els.bodyLayer.innerHTML = DOLLS[state.doll].body(ribbonColor());
+    els.bodyLayer.innerHTML = DOLLS[state.doll].body();
     els.dollSvg.classList.remove('is-happy', 'is-peek', 'is-enter', 'is-float');
     els.dollSvg.classList.add('is-enter');
     window.setTimeout(function () {
@@ -1015,39 +1002,52 @@
     }, 500);
   }
 
-  /* 스페셜 리본 열기 */
-  function openSpecialRibbon() {
+  /* 스페셜 배경 열기 */
+  function openSpecialTheme() {
     if (state.specialRibbon) {
-      state.theme = null;
+      state.theme = 5;
       saveState();
       render();
       closeOverlay('themeSheet');
-      if (phase !== 'done') newDoll();
-      toast('스페셜 리본으로 바꿨어요');
+      toast('스페셜 배경으로 바꿨어요');
       return;
     }
     askAd({
-      title: '스페셜 리본 열기',
-      desc: '광고를 끝까지 보면 <b>반짝이는 스페셜 리본 색</b>이 열려요. 한 번 열면 계속 써요.',
+      title: '스페셜 배경 열기',
+      desc: '광고를 끝까지 보면 <b>따뜻한 스페셜 배경</b>이 열려요. 한 번 열면 계속 써요.',
       confirm: '광고 보고 열기',
       kind: 'rewardedSpecialRibbon',
       onReward: function () {
         state.specialRibbon = true;
-        state.theme = null;
+        state.theme = 5;
         SFX.play('fanfare');
-        toast('스페셜 리본이 열렸어요!');
+        toast('스페셜 배경이 열렸어요!');
         render();
         saveState();
         closeOverlay('themeSheet');
-        if (phase !== 'done') newDoll();
       }
     });
+  }
+
+  /* 배경 테마 적용 */
+  function applyTheme() {
+    var t = THEMES[state.theme] || THEMES[0];
+    var root = document.documentElement.style;
+    root.setProperty('--bg', t.bg);
+    root.setProperty('--sheet', t.sheet);
+    root.setProperty('--bg-soft', t.soft);
+    root.setProperty('--line', t.line);
+    root.setProperty('--track', t.line);
+    root.setProperty('--card', t.sheet);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t.bg);
   }
 
   /* ---------------------------------------------------------
      12. 화면 렌더
      --------------------------------------------------------- */
   function render() {
+    applyTheme();
     var done = Math.min(state.todayCount, CONFIG.dailyGoal);
     var remain = Math.max(0, CONFIG.dailyGoal - done);
     var ratio = CONFIG.dailyGoal ? done / CONFIG.dailyGoal : 0;
@@ -1081,7 +1081,7 @@
     renderSwatches();
 
     els.ribbonNote.textContent = state.specialRibbon
-      ? (state.theme === null ? '사용 중' : '열림')
+      ? (state.theme === 5 ? '사용 중' : '열림')
       : '광고 보고 열기';
 
     els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
@@ -1103,8 +1103,8 @@
       var b = nodes[i];
       var idx = b.getAttribute('data-theme');
       var active = (idx === 'special')
-        ? (!!state.specialRibbon && state.theme === null)
-        : (state.theme !== null && Number(idx) === state.theme);
+        ? (state.theme === 5)
+        : (Number(idx) === state.theme);
       b.classList.toggle('is-active', active);
       b.setAttribute('aria-pressed', String(active));
     }
@@ -1239,51 +1239,35 @@
     var b = evt.target.closest ? evt.target.closest('.swatch') : null;
     if (!b) return;
     var idx = b.getAttribute('data-theme');
-    if (idx === 'special') {
-      if (state.specialRibbon) {
-        state.theme = null;
-        saveState();
-        render();
-        closeOverlay('themeSheet');
-        if (phase !== 'done') newDoll();
-        toast('스페셜 리본으로 바꿨어요');
-      } else {
-        openSpecialRibbon();
-      }
+    if (Number(idx) === 5) {
+      openSpecialTheme();
       return;
     }
     state.theme = Number(idx);
     saveState();
     render();
     closeOverlay('themeSheet');
-    if (phase !== 'done') newDoll();
     SFX.play('ui');
-    toast('리본 색을 바꿨어요');
+    toast(THEMES[state.theme].name + ' 배경으로 바꿨어요');
   });
 
   els.ribbonRow.addEventListener('click', function () {
     SFX.unlock();
-    openSpecialRibbon();
+    openSpecialTheme();
   });
 
   /* 테마 스와치 (기본 5색 + 스페셜) */
   (function buildSwatches() {
     if (!els.swatches) return;
-    ACCENTS.forEach(function (color, i) {
+    THEMES.forEach(function (theme, i) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'swatch';
+      b.className = 'swatch' + (theme.swatch === 'special' ? ' swatch--special' : '');
       b.setAttribute('data-theme', String(i));
-      b.style.background = color;
-      b.setAttribute('aria-label', '리본 색 ' + (i + 1));
+      if (theme.swatch !== 'special') b.style.background = theme.swatch;
+      b.setAttribute('aria-label', theme.name + ' 테마');
       els.swatches.appendChild(b);
     });
-    var sp = document.createElement('button');
-    sp.type = 'button';
-    sp.className = 'swatch swatch--special';
-    sp.setAttribute('data-theme', 'special');
-    sp.setAttribute('aria-label', '스페셜 리본');
-    els.swatches.appendChild(sp);
   })();
 
   /* ---------------------------------------------------------
