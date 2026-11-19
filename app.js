@@ -1,6 +1,7 @@
 /* =========================================================
    인형 눈알 붙이기 — app.js
    앱인토스(App in Toss) 비게임(엔터테인먼트) 미니앱 프로토타입
+   - 목탁 두드리기 스타일 UI: 큰 인형 · 얇은 진행 바 · 아이콘 탭 바
    - 점수·판정·콤보·등급·미션 없이 "붙이며 잠깐 쉬어가기"
    - 순수 클라이언트 사이드 (iframe / eval / SSR 사용 없음)
    - 외부 라이브러리·외부 리소스 없음
@@ -13,6 +14,9 @@
      --------------------------------------------------------- */
   var CONFIG = {
     appName: '인형 눈알 붙이기',
+
+    // 웹 공유 링크 (친구에게 공유)
+    appUrl: 'https://bubble-collab.github.io/doll-eye-job/',
 
     // 오늘의 목표: 목탁처럼 "은은한 목표 감각"만 주는 숫자예요.
     dailyGoal: 100,
@@ -32,6 +36,9 @@
 
     // 이 개수까지는 가이드가 또렷하고, 이후에는 은은해져요.
     guideStrongDolls: 3,
+
+    // 매일 알림 희망 시각 (KST)
+    notifyTime: '20:00',
 
     storageKey: 'doll-eye-job.v2',
 
@@ -53,7 +60,7 @@
     }
   };
 
-  var ACCENTS = ['#ff8e7a', '#6fc9b0', '#ffc24d', '#9da9ff', '#f28fb6'];
+  var ACCENTS = ['#E98A76', '#79C4AE', '#E7B959', '#9AA6E6', '#E398B4'];
   var SPECIAL_RIBBON = 'url(#ribbonSpecial)';
 
   /* 완성했을 때 건네는 한 줄 (판정 없음 · 실제 부업 후기 감성) */
@@ -338,10 +345,13 @@
       goalDone: false,   // 오늘 목표 달성 표시
       promotionGranted: false,
       specialRibbon: false,
+      theme: null,       // 선택한 리본 색 인덱스 (null이면 매번 바뀜)
       focusUntil: 0,
       guide: true,
       muted: false,
-      accentSeed: 0
+      accentSeed: 0,
+      notify: false,     // 매일 알림 동의 여부 (로컬 저장)
+      notifyAt: '20:00'
     };
   }
 
@@ -372,10 +382,13 @@
       state.focusUntil = 0;
     }
     if (!DOLLS[state.doll]) state.doll = 'bear';
+    if (state.theme !== null && !ACCENTS[state.theme]) state.theme = null;
     state.total = Math.max(0, Number(state.total) || 0);
     state.todayCount = Math.max(0, Number(state.todayCount) || 0);
     state.todayRecord = Math.max(0, Number(state.todayRecord) || 0);
     state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
+    state.notify = !!state.notify;
+    if (!state.notifyAt) state.notifyAt = CONFIG.notifyTime;
   }
 
   var saveTimer = null;
@@ -413,18 +426,15 @@
 
   var els = {
     backBtn: $('backBtn'),
-    soundBtn: $('soundBtn'),
-    totalDolls: $('totalDolls'),
-    todayRecord: $('todayRecord'),
-    recordInfoBtn: $('recordInfoBtn'),
-    focusChip: $('focusChip'),
+    progressWrap: document.querySelector('.progress'),
+    progressLabel: $('progressLabel'),
+    progressBar: $('progressBar'),
+    progressFill: $('progressFill'),
+    remainCount: $('remainCount'),
+    focusPill: $('focusPill'),
     focusTimer: $('focusTimer'),
-    goalBox: $('goalBox'),
-    goalDone: $('goalDone'),
-    goalTotal: $('goalTotal'),
-    goalFill: $('goalFill'),
-    tabBear: $('tabBear'),
-    tabRabbit: $('tabRabbit'),
+    todayCount: $('todayCount'),
+    summaryRight: $('summaryRight'),
     stage: $('stage'),
     hint: $('hint'),
     dollSvg: $('dollSvg'),
@@ -435,19 +445,41 @@
     popLayer: $('popLayer'),
     restBanner: $('restBanner'),
     restBannerCount: $('restBannerCount'),
-    focusBtn: $('focusBtn'),
-    focusLabel: $('focusLabel'),
-    focusNote: $('focusNote'),
-    ribbonBtn: $('ribbonBtn'),
-    ribbonLabel: $('ribbonLabel'),
+    tabDoll: $('tabDoll'),
+    tabTheme: $('tabTheme'),
+    tabSound: $('tabSound'),
+    tabBoost: $('tabBoost'),
+    tabMore: $('tabMore'),
+    moreSheet: $('moreSheet'),
+    dollSheet: $('dollSheet'),
+    themeSheet: $('themeSheet'),
+    shareBtn: $('shareBtn'),
+    notifyBtn: $('notifyBtn'),
+    notifyNote: $('notifyNote'),
+    recordBtn: $('recordBtn'),
+    aboutBtn: $('aboutBtn'),
+    swatches: $('swatches'),
+    ribbonRow: $('ribbonRow'),
     ribbonNote: $('ribbonNote'),
+    optBear: $('optBear'),
+    optRabbit: $('optRabbit'),
+    notifySheet: $('notifySheet'),
+    notifyTitle: $('notifyTitle'),
+    notifySub: $('notifySub'),
+    notifyPreview: $('notifyPreview'),
+    notifyConsent: $('notifyConsent'),
+    notifyAgree: $('notifyAgree'),
+    notifyLater: $('notifyLater'),
     exitModal: $('exitModal'),
     exitTotal: $('exitTotal'),
     exitStay: $('exitStay'),
     exitLeave: $('exitLeave'),
     recordModal: $('recordModal'),
+    statTotal: $('statTotal'),
+    statToday: $('statToday'),
     guideSwitch: $('guideSwitch'),
     resetBtn: $('resetBtn'),
+    aboutModal: $('aboutModal'),
     adNoticeModal: $('adNoticeModal'),
     adNoticeTitle: $('adNoticeTitle'),
     adNoticeDesc: $('adNoticeDesc'),
@@ -475,10 +507,10 @@
   var advanceTimer = null;
   var focusInterval = null;
   var bannerTimer = null;
-  var restAfterAdvance = false;
   var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
 
   function ribbonColor() {
+    if (state.theme !== null && ACCENTS[state.theme]) return ACCENTS[state.theme];
     if (state.specialRibbon) return SPECIAL_RIBBON;
     var seed = Number(state.accentSeed) || 0;
     state.accentSeed = seed + 1;
@@ -526,8 +558,8 @@
     return '' +
       '<g class="tap-pointer">' +
         '<g class="tap-pointer__bob">' +
-          '<rect x="' + (px - 19) + '" y="' + top + '" width="38" height="25" rx="12.5" fill="#ff7a59"/>' +
-          '<path d="M' + (px - 5) + ' ' + (top + 23) + ' L' + px + ' ' + (top + 31) + ' L' + (px + 5) + ' ' + (top + 23) + ' Z" fill="#ff7a59"/>' +
+          '<rect x="' + (px - 19) + '" y="' + top + '" width="38" height="25" rx="12.5" fill="#D98763"/>' +
+          '<path d="M' + (px - 5) + ' ' + (top + 23) + ' L' + px + ' ' + (top + 31) + ' L' + (px + 5) + ' ' + (top + 23) + ' Z" fill="#D98763"/>' +
           '<text class="tap-pointer__label" x="' + px + '" y="' + (top + 17.5) + '" text-anchor="middle">톡</text>' +
         '</g>' +
       '</g>';
@@ -700,6 +732,7 @@
     state.total += 1;
     state.todayCount += 1;
     state.sinceRest += 1;
+    dollsMade += 1;
 
     var gain = CONFIG.recordPerDoll * (isFocus() ? 2 : 1);
     state.todayRecord += gain;
@@ -742,6 +775,7 @@
       SFX.play('fanfare');
       toast('오늘의 목표 ' + CONFIG.dailyGoal + '개 달성!');
       maybeGrantPromotion();
+      render();
     }
   }
 
@@ -757,7 +791,7 @@
   }
 
   function spawnConfetti(n) {
-    var colors = ['#ff8e7a', '#ffc94d', '#6fc9b0', '#9da9ff', '#f28fb6'];
+    var colors = ['#E98A76', '#E7B959', '#79C4AE', '#9AA6E6', '#E398B4'];
     for (var i = 0; i < n; i++) {
       var b = document.createElement('i');
       b.className = 'confetti';
@@ -812,13 +846,13 @@
       '<span>오늘 완성<strong>' + state.todayCount.toLocaleString('ko-KR') + '개</strong></span>' +
       '<span>오늘의 가상 기록<strong>' + won(state.todayRecord) + '</strong></span>';
     burstRestConfetti();
-    openModal('restModal');
+    openOverlay('restModal');
     SFX.play('ui');
   }
 
   function burstRestConfetti() {
     els.restBurst.innerHTML = '';
-    var colors = ['#ff8e7a', '#ffc94d', '#6fc9b0', '#9da9ff', '#f28fb6'];
+    var colors = ['#E98A76', '#E7B959', '#79C4AE', '#9AA6E6', '#E398B4'];
     for (var i = 0; i < 16; i++) {
       var b = document.createElement('i');
       b.style.left = rand(2, 96) + '%';
@@ -835,7 +869,7 @@
   });
 
   els.restAd.addEventListener('click', function () {
-    closeModal('restModal');
+    closeOverlay('restModal');
     AdBridge.show('interstitialRest').then(function () {
       SFX.play('ui');
       toast('이어서 톡톡!');
@@ -843,7 +877,7 @@
   });
 
   els.restSkip.addEventListener('click', function () {
-    closeModal('restModal');
+    closeOverlay('restModal');
     SFX.play('ui');
   });
 
@@ -899,7 +933,7 @@
       els.adPlayerKind.textContent = rewarded ? '보상형 광고 (데모)' : '전면 광고 (데모)';
       els.adPlayerFill.style.width = '0%';
       els.adPlayerLeft.textContent = CONFIG.demoAdSeconds + '초';
-      openModal('adPlayerModal');
+      openOverlay('adPlayerModal');
 
       var start = performance.now();
       function tick(now) {
@@ -910,7 +944,7 @@
           window.requestAnimationFrame(tick);
         } else {
           window.setTimeout(function () {
-            closeModal('adPlayerModal');
+            closeOverlay('adPlayerModal');
             SFX.play('ui');
             resolve({ rewarded: rewarded });
           }, 320);
@@ -927,13 +961,13 @@
     els.adNoticeTitle.textContent = opts.title;
     els.adNoticeDesc.innerHTML = opts.desc;
     els.adConfirm.textContent = opts.confirm || '광고 보기';
-    openModal('adNoticeModal');
+    openOverlay('adNoticeModal');
   }
 
   els.adConfirm.addEventListener('click', function () {
     var job = pendingAd;
     pendingAd = null;
-    closeModal('adNoticeModal');
+    closeOverlay('adNoticeModal');
     if (!job) return;
     AdBridge.show(job.kind).then(function (res) {
       if (res.rewarded) {
@@ -947,13 +981,15 @@
 
   els.adCancel.addEventListener('click', function () {
     pendingAd = null;
-    closeModal('adNoticeModal');
+    closeOverlay('adNoticeModal');
   });
 
-  /* 30초 집중 모드 */
-  els.focusBtn.addEventListener('click', function () {
-    SFX.unlock();
-    if (isFocus()) return;
+  /* 30초 집중 모드 (부스터) */
+  function startFocusMode() {
+    if (isFocus()) {
+      toast('집중 모드 ' + Math.ceil((state.focusUntil - Date.now()) / 1000) + '초 남았어요');
+      return;
+    }
     askAd({
       title: '30초 집중 모드',
       desc: '광고를 끝까지 보면 <b>30초 동안 오늘의 가상 기록이 2배</b>로 쌓여요.',
@@ -968,7 +1004,7 @@
         startFocusTimer();
       }
     });
-  });
+  }
 
   function startFocusTimer() {
     if (focusInterval) return;
@@ -984,10 +1020,14 @@
   }
 
   /* 스페셜 리본 열기 */
-  els.ribbonBtn.addEventListener('click', function () {
-    SFX.unlock();
+  function openSpecialRibbon() {
     if (state.specialRibbon) {
-      toast('스페셜 리본이 열려 있어요');
+      state.theme = null;
+      saveState();
+      render();
+      closeOverlay('themeSheet');
+      if (phase !== 'done') newDoll();
+      toast('스페셜 리본으로 바꿨어요');
       return;
     }
     askAd({
@@ -997,85 +1037,135 @@
       kind: 'rewardedSpecialRibbon',
       onReward: function () {
         state.specialRibbon = true;
+        state.theme = null;
         SFX.play('fanfare');
         toast('스페셜 리본이 열렸어요!');
         render();
         saveState();
+        closeOverlay('themeSheet');
         if (phase !== 'done') newDoll();
       }
     });
-  });
+  }
 
   /* ---------------------------------------------------------
      12. 화면 렌더
      --------------------------------------------------------- */
   function render() {
-    els.totalDolls.textContent = state.total.toLocaleString('ko-KR');
-    els.todayRecord.textContent = won(state.todayRecord);
+    var done = Math.min(state.todayCount, CONFIG.dailyGoal);
+    var remain = Math.max(0, CONFIG.dailyGoal - done);
+    var ratio = CONFIG.dailyGoal ? done / CONFIG.dailyGoal : 0;
 
-    els.goalTotal.textContent = String(CONFIG.dailyGoal);
-    els.goalDone.textContent = String(Math.min(state.todayCount, CONFIG.dailyGoal));
-    var ratio = Math.min(1, state.todayCount / CONFIG.dailyGoal);
-    els.goalFill.style.width = (ratio * 100).toFixed(1) + '%';
-    els.goalBox.classList.toggle('is-done', state.todayCount >= CONFIG.dailyGoal);
+    els.remainCount.textContent = String(remain);
+    els.progressLabel.textContent = state.goalDone ? '오늘 목표 완료' : '눈알 붙이는 중..';
+    els.progressFill.style.width = (ratio * 100).toFixed(1) + '%';
+    els.progressBar.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+    els.progressBar.setAttribute('aria-valuetext', state.goalDone
+      ? '오늘 목표를 모두 채웠어요'
+      : '오늘 목표까지 ' + remain + '개 남았어요');
+    els.progressWrap.classList.toggle('is-done', state.goalDone);
+
+    els.todayCount.textContent = state.todayCount.toLocaleString('ko-KR');
+    var laps = Math.floor(state.todayCount / CONFIG.dailyGoal);
+    els.summaryRight.textContent = laps > 0
+      ? laps + '바퀴 완주'
+      : '가상 기록 ' + won(state.todayRecord);
 
     renderFocus();
 
-    els.soundBtn.classList.toggle('is-muted', state.muted);
-    els.soundBtn.setAttribute('aria-pressed', String(!state.muted));
-    els.soundBtn.setAttribute('aria-label', state.muted ? '소리 켜기' : '소리 끄기');
+    els.tabSound.classList.toggle('is-muted', !!state.muted);
+    els.tabSound.setAttribute('aria-pressed', String(!state.muted));
+    els.tabSound.setAttribute('aria-label', state.muted ? '소리 켜기' : '소리 끄기');
+
+    els.notifyNote.hidden = !state.notify;
+
+    els.optBear.classList.toggle('is-active', state.doll === 'bear');
+    els.optRabbit.classList.toggle('is-active', state.doll === 'rabbit');
+
+    renderSwatches();
+
+    els.ribbonNote.textContent = state.specialRibbon
+      ? (state.theme === null ? '사용 중' : '열림')
+      : '광고 보고 열기';
 
     els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
 
-    els.tabBear.classList.toggle('is-active', state.doll === 'bear');
-    els.tabRabbit.classList.toggle('is-active', state.doll === 'rabbit');
-    els.tabBear.setAttribute('aria-selected', String(state.doll === 'bear'));
-    els.tabRabbit.setAttribute('aria-selected', String(state.doll === 'rabbit'));
-
-    var special = !!state.specialRibbon;
-    els.ribbonBtn.disabled = special;
-    els.ribbonLabel.textContent = special ? '스페셜 리본 열림' : '광고 보고 리본 열기';
-    els.ribbonNote.textContent = special ? '반짝이는 리본으로 계속 만들어요' : '광고 시청 후 스페셜 리본';
+    refreshTabStates();
   }
 
   function renderFocus() {
     var on = isFocus();
-    els.focusChip.hidden = !on;
-    els.focusBtn.disabled = on;
-    els.focusLabel.textContent = on ? '집중 모드 진행 중' : '광고 보고 집중 모드';
-    els.focusNote.textContent = on ? '지금 30초 기록 2배 적용 중' : '광고 시청 후 30초 기록 2배';
+    els.focusPill.hidden = !on;
     if (on) {
       els.focusTimer.textContent = String(Math.max(0, Math.ceil((state.focusUntil - Date.now()) / 1000)));
     }
   }
 
+  function renderSwatches() {
+    var nodes = els.swatches.querySelectorAll('.swatch');
+    for (var i = 0; i < nodes.length; i++) {
+      var b = nodes[i];
+      var idx = b.getAttribute('data-theme');
+      var active = (idx === 'special')
+        ? (!!state.specialRibbon && state.theme === null)
+        : (state.theme !== null && Number(idx) === state.theme);
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-pressed', String(active));
+    }
+  }
+
+  function refreshTabStates() {
+    var sheet = openOverlayId();
+    els.tabDoll.classList.toggle('is-active', sheet === 'dollSheet');
+    els.tabTheme.classList.toggle('is-active', sheet === 'themeSheet');
+    els.tabMore.classList.toggle('is-active', sheet === 'moreSheet');
+    els.tabBoost.classList.toggle('is-active', isFocus());
+  }
+
   /* ---------------------------------------------------------
-     13. 모달 · 토스트
+     13. 오버레이(모달 · 시트) · 토스트
      --------------------------------------------------------- */
   var lastFocus = null;
 
-  function openModal(id) {
+  function openOverlay(id) {
     var m = document.getElementById(id);
     if (!m) return;
     lastFocus = document.activeElement;
     m.hidden = false;
     var focusable = m.querySelector('button:not([disabled])');
     if (focusable) {
-      window.setTimeout(function () { focusable.focus({ preventScroll: true }); }, 40);
+      window.setTimeout(function () { focusable.focus({ preventScroll: true }); }, 50);
     }
+    refreshTabStates();
   }
 
-  function closeModal(id) {
+  function closeOverlay(id) {
     var m = document.getElementById(id);
     if (!m) return;
     m.hidden = true;
     if (lastFocus && lastFocus.focus) {
       try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* noop */ }
     }
+    refreshTabStates();
   }
 
-  function anyModalOpen() {
-    return !!document.querySelector('.modal:not([hidden])');
+  function openOverlayId() {
+    var open = document.querySelector('[data-overlay]:not([hidden])');
+    return open ? open.id : '';
+  }
+
+  function anyOverlayOpen() {
+    return !!openOverlayId();
+  }
+
+  function closeTopOverlay() {
+    var list = document.querySelectorAll('[data-overlay]:not([hidden])');
+    if (!list.length) return false;
+    var top = list[list.length - 1];
+    if (top.id === 'adPlayerModal') return false;
+    closeOverlay(top.id);
+    if (top.id === 'adNoticeModal') pendingAd = null;
+    return true;
   }
 
   var toastTimer = null;
@@ -1089,26 +1179,35 @@
     toastTimer = window.setTimeout(function () { els.toast.hidden = true; }, 2200);
   }
 
-  /* 모달 닫기 버튼(배경·X) */
+  /* 오버레이 닫기(배경 · 버튼) */
   document.addEventListener('click', function (evt) {
     var t = evt.target.closest ? evt.target.closest('[data-close]') : null;
     if (!t) return;
     var id = t.getAttribute('data-close');
     if (id === 'adNoticeModal') pendingAd = null;
-    closeModal(id);
+    closeOverlay(id);
   });
 
   document.addEventListener('keydown', function (evt) {
-    if (evt.key === 'Escape') {
-      var open = document.querySelector('.modal:not([hidden])');
-      if (open && open.id !== 'adPlayerModal') closeModal(open.id);
-    }
+    if (evt.key === 'Escape') closeTopOverlay();
   });
 
   /* ---------------------------------------------------------
-     14. 소리 · 가이드 · 인형 전환
+     14. 탭 바 · 시트 내용
      --------------------------------------------------------- */
-  els.soundBtn.addEventListener('click', function () {
+  els.tabDoll.addEventListener('click', function () {
+    SFX.unlock();
+    SFX.play('ui');
+    openOverlay('dollSheet');
+  });
+
+  els.tabTheme.addEventListener('click', function () {
+    SFX.unlock();
+    SFX.play('ui');
+    openOverlay('themeSheet');
+  });
+
+  els.tabSound.addEventListener('click', function () {
     SFX.unlock();
     state.muted = !state.muted;
     SFX.setMuted(state.muted);
@@ -1116,6 +1215,295 @@
     render();
     saveState();
     toast(state.muted ? '소리를 껐어요' : '소리를 켰어요');
+  });
+
+  els.tabBoost.addEventListener('click', function () {
+    SFX.unlock();
+    SFX.play('ui');
+    startFocusMode();
+  });
+
+  els.tabMore.addEventListener('click', function () {
+    SFX.unlock();
+    SFX.play('ui');
+    openOverlay('moreSheet');
+  });
+
+  els.optBear.addEventListener('click', function () {
+    closeOverlay('dollSheet');
+    switchDoll('bear');
+  });
+
+  els.optRabbit.addEventListener('click', function () {
+    closeOverlay('dollSheet');
+    switchDoll('rabbit');
+  });
+
+  els.swatches.addEventListener('click', function (evt) {
+    var b = evt.target.closest ? evt.target.closest('.swatch') : null;
+    if (!b) return;
+    var idx = b.getAttribute('data-theme');
+    if (idx === 'special') {
+      if (state.specialRibbon) {
+        state.theme = null;
+        saveState();
+        render();
+        closeOverlay('themeSheet');
+        if (phase !== 'done') newDoll();
+        toast('스페셜 리본으로 바꿨어요');
+      } else {
+        openSpecialRibbon();
+      }
+      return;
+    }
+    state.theme = Number(idx);
+    saveState();
+    render();
+    closeOverlay('themeSheet');
+    if (phase !== 'done') newDoll();
+    SFX.play('ui');
+    toast('리본 색을 바꿨어요');
+  });
+
+  els.ribbonRow.addEventListener('click', function () {
+    SFX.unlock();
+    openSpecialRibbon();
+  });
+
+  /* 테마 스와치 (기본 5색 + 스페셜) */
+  (function buildSwatches() {
+    if (!els.swatches) return;
+    ACCENTS.forEach(function (color, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swatch';
+      b.setAttribute('data-theme', String(i));
+      b.style.background = color;
+      b.setAttribute('aria-label', '리본 색 ' + (i + 1));
+      els.swatches.appendChild(b);
+    });
+    var sp = document.createElement('button');
+    sp.type = 'button';
+    sp.className = 'swatch swatch--special';
+    sp.setAttribute('data-theme', 'special');
+    sp.setAttribute('aria-label', '스페셜 리본');
+    els.swatches.appendChild(sp);
+  })();
+
+  /* ---------------------------------------------------------
+     15. 친구에게 공유
+     --------------------------------------------------------- */
+  function legacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () {
+        return true;
+      }).catch(function () {
+        return legacyCopy(text);
+      });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+
+  /* 토스 앱(호스트)에서는 share() 브릿지를 register로 연결해요. */
+  var ShareBridge = {
+    adapter: null,
+    register: function (adapter) {
+      if (adapter && typeof adapter.share === 'function') this.adapter = adapter;
+    },
+    share: function (payload) {
+      if (this.adapter) {
+        try {
+          return Promise.resolve(this.adapter.share(payload)).then(function () {
+            return { shared: true, bridge: true };
+          }).catch(function () {
+            return copyText(payload.url).then(function (ok) { return { copied: ok }; });
+          });
+        } catch (e) { /* 웹 방식으로 이어서 */ }
+      }
+      if (navigator.share) {
+        try {
+          return navigator.share({ title: payload.title, text: payload.text, url: payload.url })
+            .then(function () { return { shared: true }; })
+            .catch(function (err) {
+              if (err && err.name === 'AbortError') return null;
+              return copyText(payload.url).then(function (ok) { return { copied: ok }; });
+            });
+        } catch (e) { /* 웹 방식으로 이어서 */ }
+      }
+      return copyText(payload.url).then(function (ok) { return { copied: ok }; });
+    }
+  };
+  window.DollEyeShare = ShareBridge;
+
+  els.shareBtn.addEventListener('click', function () {
+    SFX.unlock();
+    closeOverlay('moreSheet');
+    var payload = {
+      title: CONFIG.appName,
+      text: '눈알 붙이는 중.. 잠깐 같이 붙이러 와요',
+      url: CONFIG.appUrl
+    };
+    SFX.play('ui');
+    ShareBridge.share(payload).then(function (res) {
+      if (!res) return;
+      if (res.shared) {
+        toast('친구에게 공유했어요');
+      } else if (res.copied) {
+        toast('링크를 복사했어요');
+      } else {
+        toast('공유를 마치지 못했어요');
+      }
+    });
+  });
+
+  /* ---------------------------------------------------------
+     16. 알림 받기 (버튼을 눌렀을 때만 시트가 떠요)
+     --------------------------------------------------------- */
+  var NotificationBridge = {
+    adapter: null,
+    register: function (adapter) {
+      if (adapter && typeof adapter.request === 'function') this.adapter = adapter;
+    },
+    request: function (opts) {
+      if (!this.adapter) return Promise.resolve({ registered: false, local: true });
+      try {
+        return Promise.resolve(this.adapter.request(opts));
+      } catch (e) {
+        return Promise.resolve({ registered: false, error: true });
+      }
+    },
+    cancel: function () {
+      if (!this.adapter || typeof this.adapter.cancel !== 'function') return Promise.resolve({ canceled: false });
+      try {
+        return Promise.resolve(this.adapter.cancel());
+      } catch (e) {
+        return Promise.resolve({ canceled: false, error: true });
+      }
+    }
+  };
+  window.DollEyeNotification = NotificationBridge;
+
+  function formatNotifyTime(t) {
+    var parts = String(t || CONFIG.notifyTime).split(':');
+    var h = Number(parts[0]) || 20;
+    var m = Number(parts[1]) || 0;
+    var period = h < 12 ? '오전' : '오후';
+    var hour12 = h % 12 === 0 ? 12 : h % 12;
+    return '매일 ' + period + ' ' + hour12 + (m ? '시 ' + m + '분' : '시');
+  }
+
+  function openNotifySheet() {
+    closeOverlay('moreSheet');
+    var on = !!state.notify;
+    els.notifyTitle.innerHTML = on
+      ? '매일 인형 눈알 알림을<br />보내드리고 있어요'
+      : '매일 인형 눈알 알림을<br />보내드릴까요?';
+    els.notifySub.textContent = on
+      ? formatNotifyTime(state.notifyAt) + '에 살짝 알려드려요'
+      : '눈알 붙일 시간, 살짝 알려드릴게요';
+    els.notifyPreview.textContent = '오늘 남은 눈알, 인형에 톡 붙이러 오세요.';
+    els.notifyConsent.textContent = on
+      ? '설정 · ' + formatNotifyTime(state.notifyAt)
+      : '선택 · 인형 눈알 알림 신청서';
+    els.notifyAgree.textContent = on ? '알림 끄기' : '동의하고 알림받기';
+    els.notifyLater.textContent = on ? '닫기' : '나중에';
+    openOverlay('notifySheet');
+    SFX.play('ui');
+  }
+
+  els.notifyBtn.addEventListener('click', function () {
+    SFX.unlock();
+    openNotifySheet();
+  });
+
+  els.notifyLater.addEventListener('click', function () {
+    closeOverlay('notifySheet');
+  });
+
+  /* 웹 알림 권한 (동의를 누른 뒤에만 물어봐요) */
+  function requestWebNotificationPermission() {
+    if (!('Notification' in window)) return Promise.resolve({ supported: false });
+    if (Notification.permission === 'granted') return Promise.resolve({ granted: true });
+    if (Notification.permission === 'denied') return Promise.resolve({ denied: true });
+    try {
+      var r = Notification.requestPermission();
+      if (r && typeof r.then === 'function') {
+        return r.then(function (p) {
+          return { granted: p === 'granted', denied: p === 'denied' };
+        }).catch(function () { return {}; });
+      }
+    } catch (e) { /* iframe 등에서 막히면 조용히 넘어가요 */ }
+    return Promise.resolve({});
+  }
+
+  els.notifyAgree.addEventListener('click', function () {
+    SFX.unlock();
+
+    if (state.notify) {
+      state.notify = false;
+      saveState();
+      render();
+      closeOverlay('notifySheet');
+      NotificationBridge.cancel();
+      toast('알림을 껐어요');
+      return;
+    }
+
+    state.notify = true;
+    state.notifyAt = CONFIG.notifyTime;
+    saveState();
+    render();
+    closeOverlay('notifySheet');
+    SFX.play('fanfare');
+    toast(formatNotifyTime(state.notifyAt) + ' 알림을 신청했어요');
+
+    var opts = {
+      time: CONFIG.notifyTime,
+      title: '오늘의 눈알',
+      body: '오늘 남은 눈알, 인형에 톡 붙이러 오세요.'
+    };
+
+    // 토스 스마트 발송 브릿지가 연결돼 있으면 그쪽으로, 아니면 웹 알림 권한으로.
+    NotificationBridge.request(opts).then(function (res) {
+      if (res && (res.registered || res.granted)) return null;
+      return requestWebNotificationPermission();
+    }).catch(function () { /* 동의 상태는 로컬에 이미 저장됐어요 */ });
+  });
+
+  /* ---------------------------------------------------------
+     17. 안내 · 설정 · 인형 전환 · 소리
+     --------------------------------------------------------- */
+  els.recordBtn.addEventListener('click', function () {
+    closeOverlay('moreSheet');
+    els.statTotal.textContent = state.total.toLocaleString('ko-KR') + '개';
+    els.statToday.textContent = state.todayCount.toLocaleString('ko-KR') + '개';
+    render();
+    openOverlay('recordModal');
+    SFX.play('ui');
+  });
+
+  els.aboutBtn.addEventListener('click', function () {
+    closeOverlay('moreSheet');
+    openOverlay('aboutModal');
+    SFX.play('ui');
   });
 
   els.guideSwitch.addEventListener('click', function () {
@@ -1128,12 +1516,16 @@
   });
 
   function switchDoll(doll) {
-    if (state.doll === doll) return;
-    if (phase === 'done') {
-      toast('새 인형이 올라오면 바꿀 수 있어요');
+    SFX.unlock();
+    if (state.doll === doll) {
+      render();
       return;
     }
-    SFX.unlock();
+    if (phase === 'done') {
+      toast('새 인형이 올라오면 바꿀 수 있어요');
+      render();
+      return;
+    }
     state.doll = doll;
     SFX.play('ui');
     newDoll();
@@ -1142,11 +1534,8 @@
     toast(DOLLS[doll].name + '로 바꿨어요');
   }
 
-  els.tabBear.addEventListener('click', function () { switchDoll('bear'); });
-  els.tabRabbit.addEventListener('click', function () { switchDoll('rabbit'); });
-
   /* ---------------------------------------------------------
-     15. 뒤로가기 · 종료 확인
+     18. 뒤로가기 · 종료 확인
      --------------------------------------------------------- */
   function pushGuard() {
     try {
@@ -1155,18 +1544,17 @@
   }
 
   function requestExit() {
-    if (anyModalOpen()) {
-      var open = document.querySelector('.modal:not([hidden])');
-      if (open && open.id !== 'adPlayerModal') closeModal(open.id);
+    if (anyOverlayOpen()) {
+      closeTopOverlay();
       return;
     }
     els.exitTotal.textContent = state.total.toLocaleString('ko-KR');
-    openModal('exitModal');
+    openOverlay('exitModal');
     SFX.play('ui');
   }
 
   function leaveApp() {
-    closeModal('exitModal');
+    closeOverlay('exitModal');
     // 실제 앱에서는 호스트(앱인토스 WebView)가 앱을 닫아요.
     if (window.DollEyeHost && typeof window.DollEyeHost.exit === 'function') {
       window.DollEyeHost.exit();
@@ -1176,18 +1564,17 @@
   }
 
   els.exitStay.addEventListener('click', function () {
-    closeModal('exitModal');
+    closeOverlay('exitModal');
   });
   els.exitLeave.addEventListener('click', leaveApp);
 
   window.addEventListener('popstate', function () {
-    if (anyModalOpen()) {
-      var open = document.querySelector('.modal:not([hidden])');
-      if (open && open.id === 'adPlayerModal') {
+    if (anyOverlayOpen()) {
+      if (openOverlayId() === 'adPlayerModal') {
         pushGuard();
         return; // 광고 중에는 뒤로가기로 닫지 않아요
       }
-      if (open) closeModal(open.id);
+      closeTopOverlay();
       pushGuard();
       return;
     }
@@ -1200,18 +1587,14 @@
   });
 
   /* ---------------------------------------------------------
-     16. 가상 기록 안내 · 초기화
+     19. 기록 초기화
      --------------------------------------------------------- */
-  els.recordInfoBtn.addEventListener('click', function () {
-    openModal('recordModal');
-  });
-
   els.resetBtn.addEventListener('click', function () {
     try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* noop */ }
     state = defaultState();
     window.DollEyeApp.state = state;
     SFX.setMuted(state.muted);
-    closeModal('recordModal');
+    closeOverlay('recordModal');
     render();
     newDoll();
     saveState();
@@ -1219,7 +1602,7 @@
   });
 
   /* ---------------------------------------------------------
-     17. 시작
+     20. 시작
      --------------------------------------------------------- */
   function init() {
     loadState();
@@ -1246,6 +1629,9 @@
     render();
 
     if (isFocus()) startFocusTimer();
+
+    // 더보기 메뉴의 알림 상태 표시
+    els.notifyNote.hidden = !state.notify;
 
     // 뒤로가기 가드 (첫 화면에서 종료 확인 모달)
     pushGuard();
