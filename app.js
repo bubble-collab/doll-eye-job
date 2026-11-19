@@ -171,6 +171,7 @@
     bear: {
       name: '곰돌이',
       body: bearBody,
+      viewBox: '42 46 236 248',
       eyes: [{ x: 118, y: 142 }, { x: 202, y: 142 }],
       center: { x: 160, y: 160 },
       hitRadius: 150,
@@ -179,6 +180,7 @@
     rabbit: {
       name: '토끼',
       body: rabbitBody,
+      viewBox: '42 0 236 294',
       eyes: [{ x: 124, y: 158 }, { x: 196, y: 158 }],
       center: { x: 160, y: 182 },
       hitRadius: 150,
@@ -512,6 +514,7 @@
     taps = [];
     els.eyesLayer.innerHTML = '';
     els.fxLayer.innerHTML = '';
+    els.dollSvg.setAttribute('viewBox', DOLLS[state.doll].viewBox);
     els.bodyLayer.innerHTML = DOLLS[state.doll].body();
     els.dollSvg.classList.remove('is-happy', 'is-peek', 'is-enter', 'is-float');
     els.dollSvg.classList.add('is-enter');

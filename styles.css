@@ -14,7 +14,7 @@
   --ink-3: #8C8576;
   --ink-4: #A9A292;
   --line: #E7E1D2;
-  --track: #E7E1D2;
+  --track: #E4DDCB;
   --fill: #B9AE97;
   --blue: #3182F6;
   --blue-deep: #1B64DA;
@@ -203,7 +203,7 @@ body {
 }
 
 .doll-svg {
-  width: min(100vw, 52dvh, 400px);
+  width: min(96vw, 50dvh, 374px);
   height: auto;
   display: block;
   overflow: visible;
@@ -1106,7 +1106,7 @@ body {
   .progress { margin-top: 10px; }
   .progress__count b { font-size: 26px; }
   .progress__label { font-size: 15.5px; }
-  .doll-svg { width: min(92vw, 48dvh, 360px); }
+  .doll-svg { width: min(92vw, 44dvh, 344px); }
   .hint { margin-top: 4px; }
   .summary { padding-top: 10px; }
   .tabbar { padding-top: 2px; }
@@ -1114,7 +1114,7 @@ body {
 }
 
 @media (max-height: 640px) {
-  .doll-svg { width: min(82vw, 40dvh, 300px); }
+  .doll-svg { width: min(82vw, 38dvh, 288px); }
   .notice-line { display: none; }
   .tab__label { font-size: 11px; }
 }
