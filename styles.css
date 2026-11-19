@@ -213,7 +213,7 @@ body {
   -webkit-user-select: none;
 }
 
-.doll-shadow { fill: rgba(120, 88, 52, 0.13); filter: blur(3px); }
+.doll-shadow { fill: rgba(120, 88, 52, 0.10); filter: blur(4px); }
 
 .doll-svg.is-enter #bodyLayer { animation: dollEnter 0.42s cubic-bezier(0.2, 1.2, 0.35, 1) both; }
 .doll-svg.is-float #bodyLayer { animation: dollFloat 4s ease-in-out infinite; }

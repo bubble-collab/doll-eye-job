@@ -134,7 +134,7 @@
         // 볼터치
         '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
         '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.38"/>' +
-        '<g transform="translate(76 64) rotate(-16) scale(0.62)">' + bowMarkup(accent) + '</g>' +
+        '<g transform="translate(78 74) rotate(-22) scale(0.82)">' + bowMarkup(accent) + '</g>' +
       '</g>';
   }
 
@@ -170,7 +170,7 @@
         // 볼터치
         '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
         '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.44"/>' +
-        '<g transform="translate(106 48) rotate(-10) scale(0.56)">' + bowMarkup(accent) + '</g>' +
+        '<g transform="translate(104 50) rotate(-16) scale(0.66)">' + bowMarkup(accent) + '</g>' +
       '</g>';
   }
 
