@@ -1034,16 +1034,16 @@
 
     var special = !!state.specialRibbon;
     els.ribbonBtn.disabled = special;
-    els.ribbonLabel.textContent = special ? '스페셜 리본 열림' : '광고 보고 스페셜 리본 열기';
-    els.ribbonNote.textContent = special ? '반짝이는 리본으로 계속 만들어요' : '광고 시청 후 반짝이는 리본';
+    els.ribbonLabel.textContent = special ? '스페셜 리본 열림' : '광고 보고 리본 열기';
+    els.ribbonNote.textContent = special ? '반짝이는 리본으로 계속 만들어요' : '광고 시청 후 스페셜 리본';
   }
 
   function renderFocus() {
     var on = isFocus();
     els.focusChip.hidden = !on;
     els.focusBtn.disabled = on;
-    els.focusLabel.textContent = on ? '집중 모드 진행 중' : '광고 보고 30초 집중 모드';
-    els.focusNote.textContent = on ? '지금 가상 기록 2배 적용 중' : '광고 시청 후 가상 기록 2배';
+    els.focusLabel.textContent = on ? '집중 모드 진행 중' : '광고 보고 집중 모드';
+    els.focusNote.textContent = on ? '지금 30초 기록 2배 적용 중' : '광고 시청 후 30초 기록 2배';
     if (on) {
       els.focusTimer.textContent = String(Math.max(0, Math.ceil((state.focusUntil - Date.now()) / 1000)));
     }
