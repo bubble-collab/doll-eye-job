@@ -203,6 +203,7 @@ body {
 }
 
 .doll-svg {
+  flex: 0 0 auto;
   width: min(96vw, 50dvh, 374px);
   height: auto;
   display: block;
