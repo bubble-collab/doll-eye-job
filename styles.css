@@ -23,6 +23,7 @@
   --shadow-card: 0 18px 46px rgba(62, 52, 32, 0.16), 0 2px 8px rgba(62, 52, 32, 0.05);
   --radius-lg: 24px;
   --radius-md: 18px;
+  --banner-h: 0px;   /* 하단 고정 배너 자리 (토스 앱에서 102px) */
   --font: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -215,17 +216,25 @@ body {
 }
 
 
-.doll-svg.is-enter #bodyLayer { animation: dollEnter 0.42s cubic-bezier(0.2, 1.2, 0.35, 1) both; }
+.doll-svg.is-enter #bodyLayer { animation: dollEnter 0.26s cubic-bezier(0.2, 1.2, 0.35, 1) both; }
 .doll-svg.is-float #bodyLayer { animation: dollFloat 4s ease-in-out infinite; }
-.doll-svg.is-happy #bodyLayer { animation: dollHappy 0.6s cubic-bezier(0.3, 1.4, 0.4, 1); }
+.doll-svg.is-happy #bodyLayer { animation: dollHappy 0.34s cubic-bezier(0.3, 1.4, 0.4, 1); }
 .doll-svg.is-peek #bodyLayer { animation: dollPeek 0.45s ease-in-out; }
+
+/* 특별 주문 인형: 은은하게 번지는 빛과 장식 */
+.event-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: eventGlow 3.2s ease-in-out infinite;
+}
+.event-deco { filter: drop-shadow(0 2px 3px rgba(120, 80, 30, 0.22)); }
 
 /* ---------------- 눈알 ---------------- */
 .eye { transform-box: view-box; }
 .eye-inner {
   transform-box: fill-box;
   transform-origin: center;
-  animation: eyePress 0.44s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  animation: eyePress 0.15s cubic-bezier(0.2, 1.2, 0.4, 1) both;
 }
 .eye .eye-white { fill: #fffdf8; stroke: rgba(96, 62, 40, 0.24); stroke-width: 1.4; }
 .eye .eye-iris { fill: #3b2a22; }
@@ -237,14 +246,14 @@ body {
   stroke-width: 2;
   transform-box: fill-box;
   transform-origin: center;
-  animation: rippleOut 0.6s ease-out forwards;
+  animation: rippleOut 0.34s ease-out forwards;
 }
 .glue {
   fill: #F3E1BC;
   opacity: 0.8;
   transform-box: fill-box;
   transform-origin: center;
-  animation: glueSquish 0.5s ease-out forwards;
+  animation: glueSquish 0.32s ease-out forwards;
 }
 
 /* ---------------- 톡톡 가이드 ---------------- */
@@ -292,8 +301,10 @@ body {
 .hint.is-reaction {
   color: #3C372C;
   font-weight: 700;
-  animation: hintPop 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  animation: hintPop 0.34s cubic-bezier(0.2, 1.5, 0.4, 1) both;
 }
+.hint.is-event { color: #9A6A16; }
+.hint.is-event.is-reaction { color: #8A5C10; }
 
 /* 연출 */
 .pop-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
@@ -306,14 +317,14 @@ body {
   height: 11px;
   border-radius: 2px;
   opacity: 0;
-  animation: confettiFall 1.5s ease-out forwards;
+  animation: confettiFall 1.1s ease-out forwards;
 }
 .spark {
   position: absolute;
   font-size: 12px;
   color: #D9A93F;
   opacity: 0;
-  animation: sparkle 0.9s ease-out forwards;
+  animation: sparkle 0.7s ease-out forwards;
 }
 
 /* ---------------- 오늘 요약 ---------------- */
@@ -919,16 +930,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.ad-pre {
+.rest-note {
   margin: 12px 0 0 !important;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--bg-soft);
   font-size: 11.5px !important;
-  color: var(--ink-2) !important;
+  color: var(--ink-3) !important;
   line-height: 1.5 !important;
 }
-.ad-pre b { color: #A1563F; }
 
 .rest-burst { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: var(--radius-lg); z-index: 0; }
 .modal-card--rest > *:not(.rest-burst) { position: relative; z-index: 1; }
@@ -1093,10 +1103,47 @@ body {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-7px) rotate(3deg); }
 }
+@keyframes eventGlow {
+  0%, 100% { opacity: 0.34; transform: scale(0.95); }
+  50% { opacity: 0.58; transform: scale(1.04); }
+}
 @keyframes twinkle {
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
 }
+
+/* ---------------- 하단 고정 배너 자리 (TossAds.attachBanner) ---------------- */
+.banner-slot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: var(--banner-h);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  overflow: hidden;
+}
+.banner-slot__demo {
+  padding: 0 18px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 1.4;
+  color: var(--ink-4);
+  text-align: center;
+}
+
+body.has-banner { --banner-h: 102px; }
+body.has-banner .app { padding-bottom: calc(var(--banner-h) + 4px); }
+body.has-banner .tabbar { padding-bottom: 8px; }
+body.has-banner .doll-svg { width: min(92vw, 43dvh, 340px); }
+body.has-banner .toast,
+body.has-banner .rest-banner { bottom: calc(168px + var(--banner-h) + env(safe-area-inset-bottom)); }
+body.has-banner .sheet__wrap { padding-bottom: calc(78px + var(--banner-h)); }
 
 /* ---------------- 반응형 ---------------- */
 @media (max-height: 740px) {

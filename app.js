@@ -24,6 +24,14 @@
     // 인형 1개를 완성할 때 쌓이는 가상 기록 (실제 부업 후기처럼 소박한 단가 · 지급 없음)
     recordPerDoll: 30,
 
+    // 두 눈을 다 붙인 뒤 다음 인형이 올라오기까지의 대기(ms) — "톡·톡 → 쓱!" 리듬
+    advanceDelay: 400,
+
+    // 특별 주문(이벤트) 인형: 몇 개마다 한 번씩 랜덤으로 (평균 약 7개에 한 번 → 12~14%)
+    eventGapMin: 5,
+    eventGapMax: 9,
+    eventBonusMultiplier: 2,     // 특별 주문은 가상 기록 2배(60원)
+
     // 광고 보상
     focusSeconds: 30,       // "30초 집중 모드" (가상 기록 2배)
     demoAdSeconds: 5,       // 프로토타입 데모 광고 길이(초)
@@ -55,9 +63,11 @@
     adGroupIds: {
       rewardedFocus: 'ait-ad-test-rewarded-id',
       rewardedSpecialRibbon: 'ait-ad-test-rewarded-id',
-      interstitialRest: 'ait-ad-test-interstitial-id',
-      bannerBottom: 'ait-ad-test-banner-id'
-    }
+      banner: 'ait-ad-test-banner-id'
+    },
+
+    // 하단 고정 배너 높이(px). 토스 가이드: 고정형은 102px 권장
+    bannerHeight: 102
   };
 
   /* 배경 테마: 크림 · 살구 · 민트 · 버터 · 라벤더 (+ 광고로 여는 스페셜) */
@@ -99,59 +109,136 @@
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
   /* ---------------------------------------------------------
+     1-b. 특별 주문(이벤트) 인형 색과 장식
+     - 기본 인형(곰돌이·토끼)에 얹는 스페셜 변주 3종: 황금 · 리본 · 왕관
+     - 판정·점수 없이 "가끔 특별 주문이 들어온다" 정도의 소소한 변화
+     --------------------------------------------------------- */
+  var EVENT_KINDS = {
+    gold:   { label: '황금', kindName: '황금' },
+    ribbon: { label: '리본', kindName: '리본' },
+    crown:  { label: '왕관', kindName: '왕관' }
+  };
+
+  var BASE_BEAR = { fur: 'url(#furBear)', ear: '#efc29c', stitch: '#8d5a33', muzzle: 'url(#muzzleBear)', cheek: '#f08c82', cheekOp: '0.34' };
+  var BASE_RABBIT = { fur: 'url(#furRabbit)', ear: '#f8c3cc', stitch: '#d9b79e', muzzle: 'url(#muzzleRabbit)', cheek: '#f49aa6', cheekOp: '0.4' };
+
+  function dollPalette(dollKey, kind) {
+    if (kind === 'gold') {
+      return { fur: 'url(#furGold)', ear: '#FFF0BF', stitch: '#8A5C12', muzzle: 'url(#muzzleGold)', cheek: '#E9A43C', cheekOp: '0.42' };
+    }
+    if (kind === 'ribbon') {
+      return { fur: 'url(#furRose)', ear: '#FFD3DA', stitch: '#C08C86', muzzle: 'url(#muzzleRose)', cheek: '#F2788F', cheekOp: '0.44' };
+    }
+    return dollKey === 'rabbit' ? BASE_RABBIT : BASE_BEAR;
+  }
+
+  /* 인형 뒤로 은은하게 번지는 빛 */
+  function glowMarkup(kind, cx, cy, rx, ry) {
+    if (!kind) return '';
+    var fill = (kind === 'ribbon') ? 'url(#glowRose)' : 'url(#glowWarm)';
+    return '<ellipse class="event-glow" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="' + fill + '"/>';
+  }
+
+  /* 왕관 (황금 그라데이션 재사용) */
+  function crownMarkup(cy) {
+    var x = 160;
+    return '' +
+      '<g class="event-deco">' +
+        '<path d="M' + (x - 28) + ' ' + (cy + 16) +
+          ' L' + (x - 24) + ' ' + (cy - 14) +
+          ' L' + (x - 10) + ' ' + (cy + 2) +
+          ' L' + x + ' ' + (cy - 22) +
+          ' L' + (x + 10) + ' ' + (cy + 2) +
+          ' L' + (x + 24) + ' ' + (cy - 14) +
+          ' L' + (x + 28) + ' ' + (cy + 16) + ' Z"' +
+          ' fill="url(#ribbonSpecial)" stroke="#C68A1C" stroke-width="2" stroke-linejoin="round"/>' +
+        '<rect x="' + (x - 29) + '" y="' + (cy + 14) + '" width="58" height="9" rx="4.5"' +
+          ' fill="url(#ribbonSpecial)" stroke="#C68A1C" stroke-width="2"/>' +
+        '<circle cx="' + x + '" cy="' + (cy - 10) + '" r="3.2" fill="#FFF7DC"/>' +
+        '<circle cx="' + (x - 17) + '" cy="' + (cy + 5) + '" r="2.2" fill="#FFF7DC"/>' +
+        '<circle cx="' + (x + 17) + '" cy="' + (cy + 5) + '" r="2.2" fill="#FFF7DC"/>' +
+      '</g>';
+  }
+
+  /* 리본 (핑크 나비 리본) */
+  function bowMarkup(cy) {
+    var x = 160;
+    return '' +
+      '<g class="event-deco">' +
+        '<path d="M' + x + ' ' + cy + ' c-13 -13 -30 -10 -30 1 c0 11 17 13 30 2 z"' +
+          ' fill="#F4879C" stroke="#D2677D" stroke-width="1.6" stroke-linejoin="round"/>' +
+        '<path d="M' + x + ' ' + cy + ' c13 -13 30 -10 30 1 c0 11 -17 13 -30 2 z"' +
+          ' fill="#F9A2B3" stroke="#D2677D" stroke-width="1.6" stroke-linejoin="round"/>' +
+        '<circle cx="' + x + '" cy="' + (cy + 2) + '" r="6.2" fill="#FBC2CE" stroke="#D2677D" stroke-width="1.4"/>' +
+      '</g>';
+  }
+
+  function eventDecor(kind, dollKey) {
+    var y = dollKey === 'rabbit' ? 96 : 50;
+    if (kind === 'crown') return crownMarkup(y);
+    if (kind === 'ribbon') return bowMarkup(y);
+    return '';
+  }
+
+  /* ---------------------------------------------------------
      2. 인형 그림 (SVG)
      --------------------------------------------------------- */
-  function bearBody() {
+  function bearBody(kind) {
+    var p = dollPalette('bear', kind);
     return '' +
+      glowMarkup(kind, 160, 158, 152, 142) +
       '<g filter="url(#plushShadow)">' +
         // 왼쪽 귀
         '<g>' +
-          '<circle cx="84" cy="92" r="37" fill="url(#furBear)"/>' +
-          '<circle cx="84" cy="92" r="21" fill="#efc29c"/>' +
-          '<path d="M64 78 q18 -12 36 2" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 6" opacity="0.5"/>' +
+          '<circle cx="84" cy="92" r="37" fill="' + p.fur + '"/>' +
+          '<circle cx="84" cy="92" r="21" fill="' + p.ear + '"/>' +
+          '<path d="M64 78 q18 -12 36 2" fill="none" stroke="' + p.stitch + '" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 6" opacity="0.5"/>' +
         '</g>' +
         // 오른쪽 귀
         '<g>' +
-          '<circle cx="236" cy="92" r="37" fill="url(#furBear)"/>' +
-          '<circle cx="236" cy="92" r="21" fill="#efc29c"/>' +
-          '<path d="M220 74 q18 -10 34 4" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 6" opacity="0.5"/>' +
+          '<circle cx="236" cy="92" r="37" fill="' + p.fur + '"/>' +
+          '<circle cx="236" cy="92" r="21" fill="' + p.ear + '"/>' +
+          '<path d="M220 74 q18 -10 34 4" fill="none" stroke="' + p.stitch + '" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 6" opacity="0.5"/>' +
         '</g>' +
         // 머리
-        '<ellipse cx="160" cy="158" rx="112" ry="104" fill="url(#furBear)"/>' +
-        '<ellipse cx="118" cy="96" rx="30" ry="14" fill="#ffffff" opacity="0.08" transform="rotate(-18 118 96)"/>' +
-        '<path d="M52 178 q-6 -26 8 -50" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
-        '<path d="M268 178 q6 -26 -8 -50" fill="none" stroke="#8d5a33" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
+        '<ellipse cx="160" cy="158" rx="112" ry="104" fill="' + p.fur + '"/>' +
+        '<ellipse cx="118" cy="96" rx="30" ry="14" fill="#ffffff" opacity="' + (kind ? '0.22' : '0.08') + '" transform="rotate(-18 118 96)"/>' +
+        '<path d="M52 178 q-6 -26 8 -50" fill="none" stroke="' + p.stitch + '" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
+        '<path d="M268 178 q6 -26 -8 -50" fill="none" stroke="' + p.stitch + '" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.35"/>' +
         // 주둥이
-        '<ellipse cx="160" cy="212" rx="52" ry="37" fill="url(#muzzleBear)"/>' +
+        '<ellipse cx="160" cy="212" rx="52" ry="37" fill="' + p.muzzle + '"/>' +
         '<path d="M146 192 q14 -9 28 0 q-4 15 -14 17 q-10 -2 -14 -17 z" fill="#4b2e22"/>' +
         '<ellipse cx="154" cy="196" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.55"/>' +
         '<path id="dollMouth" d="M160 209 q-12 15 -25 5 M160 209 q12 15 25 5" fill="none" stroke="#6a4028" stroke-width="3.4" stroke-linecap="round"/>' +
         // 볼터치
-        '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.34"/>' +
-        '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="#f08c82" opacity="0.34"/>' +
-      '</g>';
+        '<ellipse cx="78" cy="196" rx="17" ry="9.5" fill="' + p.cheek + '" opacity="' + p.cheekOp + '"/>' +
+        '<ellipse cx="242" cy="196" rx="17" ry="9.5" fill="' + p.cheek + '" opacity="' + p.cheekOp + '"/>' +
+      '</g>' +
+      eventDecor(kind, 'bear');
   }
 
-  function rabbitBody() {
+  function rabbitBody(kind) {
+    var p = dollPalette('rabbit', kind);
     return '' +
+      glowMarkup(kind, 160, 182, 152, 150) +
       '<g filter="url(#plushShadow)">' +
         // 귀 (왼쪽)
         '<g transform="rotate(-9 110 96)">' +
-          '<ellipse cx="110" cy="66" rx="28" ry="62" fill="url(#furRabbit)"/>' +
-          '<ellipse cx="110" cy="72" rx="13" ry="44" fill="#f8c3cc"/>' +
-          '<path d="M97 36 q13 6 26 0" fill="none" stroke="#d9b79e" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
+          '<ellipse cx="110" cy="66" rx="28" ry="62" fill="' + p.fur + '"/>' +
+          '<ellipse cx="110" cy="72" rx="13" ry="44" fill="' + p.ear + '"/>' +
+          '<path d="M97 36 q13 6 26 0" fill="none" stroke="' + p.stitch + '" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
         '</g>' +
         // 귀 (오른쪽)
         '<g transform="rotate(9 210 96)">' +
-          '<ellipse cx="210" cy="66" rx="28" ry="62" fill="url(#furRabbit)"/>' +
-          '<ellipse cx="210" cy="72" rx="13" ry="44" fill="#f8c3cc"/>' +
-          '<path d="M197 36 q13 6 26 0" fill="none" stroke="#d9b79e" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
+          '<ellipse cx="210" cy="66" rx="28" ry="62" fill="' + p.fur + '"/>' +
+          '<ellipse cx="210" cy="72" rx="13" ry="44" fill="' + p.ear + '"/>' +
+          '<path d="M197 36 q13 6 26 0" fill="none" stroke="' + p.stitch + '" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
         '</g>' +
         // 머리
-        '<ellipse cx="160" cy="182" rx="102" ry="90" fill="url(#furRabbit)"/>' +
-        '<ellipse cx="120" cy="138" rx="34" ry="17" fill="#ffffff" opacity="0.3" transform="rotate(-16 120 138)"/>' +
+        '<ellipse cx="160" cy="182" rx="102" ry="90" fill="' + p.fur + '"/>' +
+        '<ellipse cx="120" cy="138" rx="34" ry="17" fill="#ffffff" opacity="' + (kind ? '0.45' : '0.3') + '" transform="rotate(-16 120 138)"/>' +
         // 주둥이
-        '<ellipse cx="160" cy="220" rx="46" ry="31" fill="url(#muzzleRabbit)"/>' +
+        '<ellipse cx="160" cy="220" rx="46" ry="31" fill="' + p.muzzle + '"/>' +
         '<path d="M151 206 q9 -7 18 0 q-3 9 -9 10 q-6 -1 -9 -10 z" fill="#f08a96"/>' +
         '<path id="dollMouth" d="M160 216 q-10 13 -21 3 M160 216 q10 13 21 3" fill="none" stroke="#8a5a44" stroke-width="3.1" stroke-linecap="round"/>' +
         // 수염
@@ -162,9 +249,10 @@
           '<path d="M206 221 q24 2 36 0"/>' +
         '</g>' +
         // 볼터치
-        '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.4"/>' +
-        '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="#f49aa6" opacity="0.4"/>' +
-      '</g>';
+        '<ellipse cx="82" cy="206" rx="17" ry="9.5" fill="' + p.cheek + '" opacity="' + p.cheekOp + '"/>' +
+        '<ellipse cx="238" cy="206" rx="17" ry="9.5" fill="' + p.cheek + '" opacity="' + p.cheekOp + '"/>' +
+      '</g>' +
+      eventDecor(kind, 'rabbit');
   }
 
   var DOLLS = {
@@ -336,6 +424,8 @@
       total: 0,          // 누적 완성 인형
       todayCount: 0,     // 오늘 완성 인형
       todayRecord: 0,    // 오늘의 가상 기록(원)
+      eventToday: 0,     // 오늘 받은 특별 주문 인형
+      eventTotal: 0,     // 누적 특별 주문 인형
       sinceRest: 0,      // 마지막 쉼표 배너 이후 완성 수
       goalDone: false,   // 오늘 목표 달성 표시
       promotionGranted: false,
@@ -371,6 +461,7 @@
       state.day = todayKst();
       state.todayCount = 0;
       state.todayRecord = 0;
+      state.eventToday = 0;
       state.sinceRest = 0;
       state.goalDone = false;
       state.promotionGranted = false;
@@ -383,6 +474,8 @@
     state.total = Math.max(0, Number(state.total) || 0);
     state.todayCount = Math.max(0, Number(state.todayCount) || 0);
     state.todayRecord = Math.max(0, Number(state.todayRecord) || 0);
+    state.eventToday = Math.max(0, Number(state.eventToday) || 0);
+    state.eventTotal = Math.max(0, Number(state.eventTotal) || 0);
     state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
     state.notify = !!state.notify;
     if (!state.notifyAt) state.notifyAt = CONFIG.notifyTime;
@@ -442,6 +535,7 @@
     popLayer: $('popLayer'),
     restBanner: $('restBanner'),
     restBannerCount: $('restBannerCount'),
+    bannerSlot: $('tossBannerSlot'),
     tabDoll: $('tabDoll'),
     tabTheme: $('tabTheme'),
     tabSound: $('tabSound'),
@@ -474,6 +568,7 @@
     recordModal: $('recordModal'),
     statTotal: $('statTotal'),
     statToday: $('statToday'),
+    statEvent: $('statEvent'),
     guideSwitch: $('guideSwitch'),
     resetBtn: $('resetBtn'),
     aboutModal: $('aboutModal'),
@@ -491,8 +586,7 @@
     restMessage: $('restMessage'),
     restSummary: $('restSummary'),
     restBurst: $('restBurst'),
-    restSkip: $('restSkip'),
-    restAd: $('restAd'),
+    restClose: $('restClose'),
     toast: $('toast')
   };
 
@@ -506,24 +600,57 @@
   var bannerTimer = null;
   var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
 
+  /* 특별 주문(이벤트) 인형: 다음 등장까지 남은 인형 수 (평균 7개에 한 번 → 12~14%) */
+  var eventCountdown = 0;
+  var lastEventKind = '';
+  var currentEvent = null;   // 지금 올라온 인형이 특별 주문이면 'gold' | 'ribbon' | 'crown'
+
+  function seedEventCountdown(first) {
+    var min = first ? 3 : CONFIG.eventGapMin;
+    var max = first ? 5 : CONFIG.eventGapMax;
+    eventCountdown = min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  function rollEventDoll() {
+    if (eventCountdown > 0) {
+      eventCountdown -= 1;
+      return null;
+    }
+    var kinds = [];
+    for (var k in EVENT_KINDS) {
+      if (Object.prototype.hasOwnProperty.call(EVENT_KINDS, k) && k !== lastEventKind) kinds.push(k);
+    }
+    var kind = pick(kinds.length ? kinds : ['gold']);
+    lastEventKind = kind;
+    seedEventCountdown(false);
+    return kind;
+  }
+
   function newDoll() {
     clearTimeout(advanceTimer);
     advanceTimer = null;
 
     phase = 'left';
     taps = [];
+    currentEvent = rollEventDoll();
     els.eyesLayer.innerHTML = '';
     els.fxLayer.innerHTML = '';
+    els.popLayer.innerHTML = '';
     els.dollSvg.setAttribute('viewBox', DOLLS[state.doll].viewBox);
-    els.bodyLayer.innerHTML = DOLLS[state.doll].body();
+    els.bodyLayer.innerHTML = DOLLS[state.doll].body(currentEvent);
     els.dollSvg.classList.remove('is-happy', 'is-peek', 'is-enter', 'is-float');
     els.dollSvg.classList.add('is-enter');
     window.setTimeout(function () {
       els.dollSvg.classList.remove('is-enter');
       els.dollSvg.classList.add('is-float');
-    }, 440);
+    }, 300);
 
-    setHint('왼쪽 눈을 톡 눌러 보세요');
+    els.hint.classList.toggle('is-event', !!currentEvent);
+    if (currentEvent) {
+      setHint('✨ 특별 주문 인형! 왼쪽 눈부터 톡', true);
+    } else {
+      setHint('왼쪽 눈을 톡 눌러 보세요');
+    }
     renderGuide();
     saveState();
   }
@@ -671,7 +798,7 @@
     window.setTimeout(function () {
       c.remove();
       glue.remove();
-    }, 620);
+    }, 380);
   }
 
   function onDollPointerDown(evt) {
@@ -714,23 +841,31 @@
     phase = 'done';
 
     var skewed = taps.some(function (t) { return !t.snapped; });
+    var isSpecial = !!currentEvent;
 
     state.total += 1;
     state.todayCount += 1;
     state.sinceRest += 1;
     dollsMade += 1;
+    if (isSpecial) {
+      state.eventToday += 1;
+      state.eventTotal += 1;
+    }
 
     var gain = CONFIG.recordPerDoll * (isFocus() ? 2 : 1);
+    if (isSpecial) gain *= CONFIG.eventBonusMultiplier;
     state.todayRecord += gain;
 
     els.dollSvg.classList.remove('is-float', 'is-peek');
     els.dollSvg.classList.add('is-happy');
     SFX.play('chime');
-    spawnSparkles(skewed ? 6 : 4);
-    if (!skewed) spawnConfetti(6);
+    spawnSparkles(isSpecial ? 9 : (skewed ? 6 : 4));
+    if (isSpecial || !skewed) spawnConfetti(isSpecial ? 12 : 6);
 
     var line;
-    if (skewed) {
+    if (isSpecial) {
+      line = '✨ 특별 주문 완성! +' + gain.toLocaleString('ko-KR') + '원';
+    } else if (skewed) {
       line = pick(CUTE_LINES);
     } else if (Math.random() < 0.22) {
       line = '귀여운 ' + DOLLS[state.doll].name + ' 완성!';
@@ -750,8 +885,8 @@
       showRestBanner();
     }
 
-    // 바로 다음 눈 없는 인형이 올라와요.
-    advanceTimer = window.setTimeout(newDoll, 1150);
+    // 바로 다음 눈 없는 인형이 올라와요. (톡·톡 → 쓱!)
+    advanceTimer = window.setTimeout(newDoll, Math.max(240, CONFIG.advanceDelay));
   }
 
   function checkGoal() {
@@ -803,7 +938,7 @@
       s.style.animationDelay = (Math.random() * 0.2).toFixed(2) + 's';
       els.popLayer.appendChild(s);
       (function (node) {
-        window.setTimeout(function () { node.remove(); }, 1100);
+        window.setTimeout(function () { node.remove(); }, 780);
       })(s);
     }
   }
@@ -854,15 +989,7 @@
     openRestCard();
   });
 
-  els.restAd.addEventListener('click', function () {
-    closeOverlay('restModal');
-    AdBridge.show('interstitialRest').then(function () {
-      SFX.play('ui');
-      toast('이어서 톡톡!');
-    });
-  });
-
-  els.restSkip.addEventListener('click', function () {
+  els.restClose.addEventListener('click', function () {
     closeOverlay('restModal');
     SFX.play('ui');
   });
@@ -894,6 +1021,63 @@
   };
   window.DollEyeAdBridge = AdBridge;
 
+  /* ---------------------------------------------------------
+     하단 고정 배너 (토스 앱: TossAds.attachBanner)
+     - 토스 가이드: 고정형 배너는 width 100% · height 102px
+     - 붙이지 못했거나(onNoFill/실패) 광고가 없으면 자리를 잡지 않아
+       탭 바 아래에 빈 띠가 남지 않아요.
+     --------------------------------------------------------- */
+  var BannerBridge = {
+    adapter: null,
+    handle: null,
+    register: function (adapter) {
+      if (adapter && typeof adapter.attach === 'function') {
+        this.adapter = adapter;
+        this.mount();
+      }
+    },
+    mount: function () {
+      var self = this;
+      var slot = els.bannerSlot;
+      var id = CONFIG.adGroupIds.banner;
+      if (!this.adapter || !slot || !id) return;
+      slot.innerHTML = '';
+      setBannerActive(true);   // 먼저 자리를 잡아 탭 바가 배너에 가리지 않게
+      try {
+        var res = this.adapter.attach(id, slot, {
+          onRendered: function () { setBannerActive(true); },
+          onNoFill: function () { setBannerActive(false); },
+          onFailed: function () { setBannerActive(false); }
+        });
+        Promise.resolve(res).then(function (h) {
+          self.handle = h || null;
+        }).catch(function () { setBannerActive(false); });
+      } catch (e) {
+        setBannerActive(false);
+      }
+    },
+    destroy: function () {
+      if (this.handle && typeof this.handle.destroy === 'function') {
+        try { this.handle.destroy(); } catch (e) { /* noop */ }
+      }
+      this.handle = null;
+    }
+  };
+  window.DollEyeBanner = BannerBridge;
+
+  /* 배너 자리 표시: body 클래스로 앱 여백(--banner-h)을 함께 잡아요. */
+  function setBannerActive(on, demoText) {
+    if (!els.bannerSlot) return;
+    on = !!on;
+    document.body.classList.toggle('has-banner', on);
+    els.bannerSlot.hidden = !on;
+    if (!on) {
+      els.bannerSlot.innerHTML = '';
+    } else if (demoText) {
+      els.bannerSlot.innerHTML = '<span class="banner-slot__demo">' + demoText + '</span>';
+    }
+  }
+
   /* 프로모션 브리지 (사업자 등록 + 프로모션 코드 발급 후 호스트에서 연결) */
   var PromotionBridge = {
     adapter: null,
@@ -913,10 +1097,9 @@
 
   function demoAd(kind) {
     return new Promise(function (resolve) {
-      var rewarded = kind !== 'interstitialRest';
       var total = CONFIG.demoAdSeconds * 1000;
 
-      els.adPlayerKind.textContent = rewarded ? '보상형 광고 (데모)' : '전면 광고 (데모)';
+      els.adPlayerKind.textContent = '보상형 광고 (데모)';
       els.adPlayerFill.style.width = '0%';
       els.adPlayerLeft.textContent = CONFIG.demoAdSeconds + '초';
       openOverlay('adPlayerModal');
@@ -932,7 +1115,7 @@
           window.setTimeout(function () {
             closeOverlay('adPlayerModal');
             SFX.play('ui');
-            resolve({ rewarded: rewarded });
+            resolve({ rewarded: true });
           }, 320);
         }
       }
@@ -1504,6 +1687,7 @@
     closeOverlay('moreSheet');
     els.statTotal.textContent = state.total.toLocaleString('ko-KR') + '개';
     els.statToday.textContent = state.todayCount.toLocaleString('ko-KR') + '개';
+    els.statEvent.textContent = state.eventToday.toLocaleString('ko-KR') + '개';
     render();
     openOverlay('recordModal');
     SFX.play('ui');
@@ -1617,6 +1801,8 @@
     loadState();
     SFX.setMuted(!!state.muted);
 
+    seedEventCountdown(true);
+
     els.dollSvg.addEventListener('pointerdown', onDollPointerDown);
 
     // iOS 사파리/토스 웹뷰 오디오 잠금 해제: 첫 터치마다 확인
@@ -1644,6 +1830,11 @@
 
     // 뒤로가기 가드 (첫 화면에서 종료 확인 모달)
     pushGuard();
+
+    // 하단 배너 자리 미리보기: ?banner=1 (웹에서만 · 토스 앱은 브릿지가 채워요)
+    if (/[?&]banner=(1|preview)\b/.test(window.location.search)) {
+      setBannerActive(true, '하단 고정 배너 자리 102px · 토스 앱에서 광고가 채워져요');
+    }
   }
 
   window.DollEyeApp = {

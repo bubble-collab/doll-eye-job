@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F6F3EB" />
   <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙이며 잡생각을 비우는 힐링 엔터테인먼트, 인형 눈알 붙이기." />
   <title>인형 눈알 붙이기</title>
-  <link rel="stylesheet" href="styles.css?v=moktak15" />
+  <link rel="stylesheet" href="styles.css?v=moktak16" />
 </head>
 <body>
   <div class="app" id="app">
@@ -70,6 +70,36 @@
               <stop offset="45%" stop-color="#FFC24D"/>
               <stop offset="100%" stop-color="#F0A227"/>
             </linearGradient>
+            <!-- 특별 주문 인형: 황금 털 / 리본 털 -->
+            <radialGradient id="furGold" cx="36%" cy="24%" r="86%">
+              <stop offset="0%" stop-color="#FFF6D4"/>
+              <stop offset="42%" stop-color="#F8D172"/>
+              <stop offset="78%" stop-color="#E3A32E"/>
+              <stop offset="100%" stop-color="#BC7A15"/>
+            </radialGradient>
+            <linearGradient id="muzzleGold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFFAE4"/>
+              <stop offset="100%" stop-color="#F6E1AB"/>
+            </linearGradient>
+            <radialGradient id="furRose" cx="38%" cy="24%" r="86%">
+              <stop offset="0%" stop-color="#FFF4F5"/>
+              <stop offset="52%" stop-color="#FBD9DF"/>
+              <stop offset="100%" stop-color="#E6ADB7"/>
+            </radialGradient>
+            <linearGradient id="muzzleRose" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFFFFF"/>
+              <stop offset="100%" stop-color="#FCE4E8"/>
+            </linearGradient>
+            <radialGradient id="glowWarm">
+              <stop offset="0%" stop-color="#FFD98F" stop-opacity="0.55"/>
+              <stop offset="60%" stop-color="#FFD98F" stop-opacity="0.16"/>
+              <stop offset="100%" stop-color="#FFD98F" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="glowRose">
+              <stop offset="0%" stop-color="#FFC9D6" stop-opacity="0.5"/>
+              <stop offset="60%" stop-color="#FFC9D6" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#FFC9D6" stop-opacity="0"/>
+            </radialGradient>
             <filter id="plushShadow" x="-30%" y="-30%" width="160%" height="170%">
               <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#8C5A34" flood-opacity="0.16"/>
             </filter>
@@ -303,6 +333,7 @@
       <div class="stat-grid">
         <span>완성한 인형<strong id="statTotal">0</strong></span>
         <span>오늘 완성<strong id="statToday">0</strong></span>
+        <span>특별 주문<strong id="statEvent">0</strong></span>
       </div>
       <div class="switch-row">
         <span>눈 위치 가이드</span>
@@ -326,7 +357,7 @@
         <dt>가상 기록</dt>
         <dd>오늘의 기록은 앱을 즐기기 위한 <b>가상의 숫자</b>예요. 실제 현금이나 토스포인트로 지급되지 않아요.</dd>
         <dt>광고</dt>
-        <dd>광고는 <b>사전 안내를 거쳐</b> 보상형으로만 재생돼요. 쉬어가기 카드에서는 광고 없이 계속할 수 있어요.</dd>
+        <dd>화면 아래 <b>배너 광고</b>는 앱을 쓰는 동안 조용히 보여요. 보상형 광고(집중 모드·스페셜 배경)는 <b>사전 안내를 거쳐</b> 재생되고, 쉬어가기 카드는 광고 없이 이어져요.</dd>
         <dt>알림</dt>
         <dd>알림은 <b>동의한 경우에만</b> 매일 저녁 8시에 보내요. 더보기 → 알림 받기에서 언제든 끌 수 있어요.</dd>
         <dt>그림과 소리</dt>
@@ -383,10 +414,9 @@
       <h2 id="restTitle">인형 10개 완성!</h2>
       <p id="restMessage">어깨 한 번 펴고, 물 한 모금 마셔요.</p>
       <div class="rest-summary" id="restSummary"></div>
-      <p class="ad-pre">이어서 만들기 전에 <b>광고가 한 번 재생</b>돼요.</p>
+      <p class="rest-note">쉬는 동안 광고는 나오지 않아요.</p>
       <div class="modal-actions">
-        <button class="btn btn--ghost" id="restSkip" type="button">광고 없이 계속</button>
-        <button class="btn btn--primary" id="restAd" type="button">광고 보고 계속</button>
+        <button class="btn btn--primary" id="restClose" type="button">계속 만들기</button>
       </div>
     </div>
   </div>
@@ -405,10 +435,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
+  <!-- 하단 고정 배너 자리: 토스 앱에서 TossAds.attachBanner가 채워요 (높이 102px) -->
+  <div class="banner-slot" id="tossBannerSlot" hidden></div>
+
   <noscript>
     <p style="padding:24px;text-align:center;font-family:sans-serif">이 미니앱을 사용하려면 자바스크립트를 켜 주세요.</p>
   </noscript>
 
-  <script src="app.js?v=moktak15"></script>
+  <script src="app.js?v=moktak16"></script>
 </body>
 </html>
