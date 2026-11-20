@@ -894,7 +894,9 @@
     }
 
     // 바로 다음 눈 없는 인형이 올라와요. (톡·톡 → 쓱!)
-    advanceTimer = window.setTimeout(newDoll, Math.max(240, CONFIG.advanceDelay));
+    //  특별 주문은 보너스 문구를 읽을 수 있게 조금 더 머물러요.
+    var nextDelay = isSpecial ? Math.max(CONFIG.advanceDelay, 900) : CONFIG.advanceDelay;
+    advanceTimer = window.setTimeout(newDoll, Math.max(240, nextDelay));
   }
 
   function checkGoal() {
