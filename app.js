@@ -1007,7 +1007,7 @@
     els.restMessage.textContent = pick(REST_LINES);
     els.restSummary.innerHTML =
       '<span>오늘 완성<strong>' + state.todayCount.toLocaleString('ko-KR') + '개</strong></span>' +
-      '<span>오늘의 가상 기록<strong>' + won(state.todayRecord) + '</strong></span>';
+      '<span>오늘의 가상 정산<strong>' + won(state.todayRecord) + '</strong></span>';
     burstRestConfetti();
     openOverlay('restModal');
     SFX.play('ui');
@@ -1203,13 +1203,13 @@
     }
     askAd({
       title: '30초 집중 모드',
-      desc: '광고를 끝까지 보면 <b>30초 동안 오늘의 가상 기록이 2배</b>로 쌓여요.',
+      desc: '광고를 끝까지 보면 <b>30초 동안 오늘의 가상 정산이 2배</b>로 쌓여요.',
       confirm: '광고 보고 시작',
       kind: 'rewardedFocus',
       onReward: function () {
         state.focusUntil = Date.now() + CONFIG.focusSeconds * 1000;
         SFX.play('fanfare');
-        toast(CONFIG.focusSeconds + '초 동안 기록 2배');
+        toast(CONFIG.focusSeconds + '초 동안 정산 2배');
         render();
         saveState();
         startFocusTimer();
