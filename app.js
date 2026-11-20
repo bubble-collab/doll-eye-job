@@ -2,7 +2,9 @@
    인형 눈알 붙이기 — app.js
    앱인토스(App in Toss) 비게임(엔터테인먼트) 미니앱 프로토타입
    - 목탁 두드리기 스타일 UI: 큰 인형 · 얇은 진행 바 · 아이콘 탭 바
-   - 점수·판정·콤보·등급·미션 없이 "붙이며 잠깐 쉬어가기"
+   - 인형마다 왼쪽·오른쪽 중 먼저 붙일 눈이 랜덤 (순서 안내)
+   - 순서대로 붙이면 콤보 · 삐끗하면 콤보 리셋(게임 오버 없음) · 최고 콤보 저장
+   - 점수·등급·미션·제한시간 없이 "붙이며 잠깐 쉬어가기"
    - 순수 클라이언트 사이드 (iframe / eval / SSR 사용 없음)
    - 외부 라이브러리·외부 리소스 없음
    ========================================================= */
@@ -44,6 +46,18 @@
 
     // 이 개수까지는 가이드가 또렷하고, 이후에는 은은해져요.
     guideStrongDolls: 3,
+
+    // 콤보: 이만큼 이어 붙이면 상단에 칩으로 보여 줘요.
+    comboChipFrom: 2,
+
+    // 콤보 보너스(가상 기록): 5연속 +10원 · 10연속부터 +20원
+    comboBonus: [
+      { from: 5, won: 10 },
+      { from: 10, won: 20 }
+    ],
+
+    // 5연속마다 가볍게 축하해요.
+    comboMilestoneEvery: 5,
 
     // 매일 알림 희망 시각 (KST)
     notifyTime: '20:00',
@@ -97,6 +111,12 @@
     '이건 윙크로 나갑니다',
     '눈알이 노는 중… 귀엽네요',
     '봉제선 살짝 벗어났지만 합격!'
+  ];
+  /* 순서를 놓쳐 콤보만 끊겼을 때: 벌점 없이 리듬만 다시 */
+  var BREAK_LINES = [
+    '콤보는 끊겼지만 완성! 다음 인형부터 다시',
+    '순서만 놓쳤어요, 리듬은 그대로',
+    '앗, 콤보가… 다시 이어 가요'
   ];
   var REST_LINES = [
     '허리 한번 펴고, 물 한 모금 마셔요.',
@@ -386,6 +406,16 @@
       },
       ui: function () {
         tone({ freq: 720, dur: 0.05, gain: 0.1, type: 'sine' });
+      },
+      // 앗, 반대쪽! (짧게 떨어지는 두 음)
+      miss: function () {
+        tone({ freq: 520, to: 360, dur: 0.1, gain: 0.11, type: 'triangle' });
+        tone({ freq: 340, to: 220, dur: 0.15, gain: 0.09, type: 'sine', delay: 0.08 });
+      },
+      // 콤보 5연속·10연속 (가볍게 올라가는 두 음)
+      combo: function () {
+        tone({ freq: 880, dur: 0.09, gain: 0.11, type: 'triangle' });
+        tone({ freq: 1174.7, dur: 0.14, gain: 0.1, type: 'triangle', delay: 0.08 });
       }
     };
 
@@ -427,6 +457,7 @@
       eventToday: 0,     // 오늘 받은 특별 주문 인형
       eventTotal: 0,     // 누적 특별 주문 인형
       sinceRest: 0,      // 마지막 쉼표 배너 이후 완성 수
+      bestCombo: 0,      // 최고 연속 콤보
       goalDone: false,   // 오늘 목표 달성 표시
       promotionGranted: false,
       specialRibbon: false,
@@ -477,6 +508,7 @@
     state.eventToday = Math.max(0, Number(state.eventToday) || 0);
     state.eventTotal = Math.max(0, Number(state.eventTotal) || 0);
     state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
+    state.bestCombo = Math.max(0, Number(state.bestCombo) || 0);
     state.notify = !!state.notify;
     if (!state.notifyAt) state.notifyAt = CONFIG.notifyTime;
   }
@@ -523,9 +555,11 @@
     remainCount: $('remainCount'),
     focusPill: $('focusPill'),
     focusTimer: $('focusTimer'),
+    comboChip: $('comboChip'),
     todayCount: $('todayCount'),
     summaryRight: $('summaryRight'),
     stage: $('stage'),
+    dollArea: $('dollArea'),
     hint: $('hint'),
     dollSvg: $('dollSvg'),
     bodyLayer: $('bodyLayer'),
@@ -569,6 +603,7 @@
     statTotal: $('statTotal'),
     statToday: $('statToday'),
     statEvent: $('statEvent'),
+    statCombo: $('statCombo'),
     guideSwitch: $('guideSwitch'),
     resetBtn: $('resetBtn'),
     aboutModal: $('aboutModal'),
@@ -593,12 +628,19 @@
   /* ---------------------------------------------------------
      6. 흐름 상태
      --------------------------------------------------------- */
-  var phase = 'left';        // 'left' | 'right' | 'done'
+  var phase = 'first';       // 'first' | 'second' | 'done'
   var taps = [];
   var advanceTimer = null;
   var focusInterval = null;
   var bannerTimer = null;
   var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
+
+  /* 랜덤 눈 순서 · 콤보 */
+  var firstSide = 'left';    // 이번 인형에서 먼저 붙일 눈
+  var guideIndex = 0;        // 지금 눌러야 할 눈 (0 왼쪽 · 1 오른쪽)
+  var clean = true;          // 이번 인형에서 실수 없이 붙였는지
+  var combo = 0;             // 연속으로 실수 없이 완성한 인형 수
+  var comboShown = -1;       // 칩 애니메이션 중복 방지
 
   /* 특별 주문(이벤트) 인형: 다음 등장까지 남은 인형 수 (평균 7개에 한 번 → 12~14%) */
   var eventCountdown = 0;
@@ -633,11 +675,18 @@
     return kind;
   }
 
+  function sideKo(side) { return side === 'right' ? '오른쪽' : '왼쪽'; }
+  function eyeIndexOf(side) { return side === 'right' ? 1 : 0; }
+
   function newDoll() {
     clearTimeout(advanceTimer);
     advanceTimer = null;
 
-    phase = 'left';
+    // 인형마다 먼저 붙일 눈을 랜덤으로 정해요. (왼쪽 시작 50% · 오른쪽 시작 50%)
+    firstSide = Math.random() < 0.5 ? 'left' : 'right';
+    guideIndex = eyeIndexOf(firstSide);
+    phase = 'first';
+    clean = true;
     taps = [];
     currentEvent = rollEventDoll();
     els.eyesLayer.innerHTML = '';
@@ -654,11 +703,12 @@
 
     els.hint.classList.toggle('is-event', !!currentEvent);
     if (currentEvent) {
-      setHint('✨ 특별 주문 인형! 왼쪽 눈부터 톡', true);
+      setHint('✨ 특별 주문 인형! ' + sideKo(firstSide) + ' 눈부터 톡', true);
     } else {
-      setHint('왼쪽 눈을 톡 눌러 보세요');
+      setHint(sideKo(firstSide) + ' 눈부터 톡');
     }
     renderGuide();
+    renderCombo();
     saveState();
   }
 
@@ -691,10 +741,9 @@
   function renderGuide() {
     els.guideLayer.innerHTML = '';
     if (!state.guide) return;
-    if (phase !== 'left' && phase !== 'right') return;
+    if (phase !== 'first' && phase !== 'second') return;
 
-    var index = Math.min(taps.length, 1);
-    var pt = DOLLS[state.doll].eyes[index];
+    var pt = DOLLS[state.doll].eyes[guideIndex];
     var soft = dollsMade >= CONFIG.guideStrongDolls;
 
     var markup = tapTargetMarkup(pt.x, pt.y, soft);
@@ -808,10 +857,56 @@
     }, 380);
   }
 
+  /* ---------------------------------------------------------
+     8-b. 콤보 · 삐끗 연출
+     --------------------------------------------------------- */
+  function comboBonusFor(c) {
+    var bonus = 0;
+    for (var i = 0; i < CONFIG.comboBonus.length; i++) {
+      if (c >= CONFIG.comboBonus[i].from) bonus = CONFIG.comboBonus[i].won;
+    }
+    return bonus;
+  }
+
+  function renderCombo() {
+    var on = combo >= CONFIG.comboChipFrom;
+    if (!on) {
+      els.comboChip.hidden = true;
+      els.comboChip.classList.remove('is-hot');
+      comboShown = combo;
+      return;
+    }
+    els.comboChip.hidden = false;
+    els.comboChip.innerHTML = '🔥 <b>' + combo + '</b>연속';
+    els.comboChip.classList.toggle('is-hot', combo >= 10);
+    if (comboShown !== combo) {
+      els.comboChip.classList.remove('is-pop');
+      void els.comboChip.offsetWidth;
+      els.comboChip.classList.add('is-pop');
+    }
+    comboShown = combo;
+  }
+
+  function shakeDoll() {
+    els.dollArea.classList.remove('is-shake');
+    void els.dollArea.offsetWidth;
+    els.dollArea.classList.add('is-shake');
+    window.setTimeout(function () { els.dollArea.classList.remove('is-shake'); }, 460);
+  }
+
+  /* 실수: 콤보만 0으로 돌리고, 게임 오버 없이 바로 이어 가요. */
+  function breakCombo() {
+    var had = combo;
+    combo = 0;
+    clean = false;
+    renderCombo();
+    return had;
+  }
+
   function onDollPointerDown(evt) {
     if (evt.cancelable) evt.preventDefault();
     SFX.unlock();
-    if (phase !== 'left' && phase !== 'right') return;
+    if (phase !== 'first' && phase !== 'second') return;
 
     var p = svgPoint(evt);
     var d = DOLLS[state.doll];
@@ -820,24 +915,42 @@
       return;
     }
 
-    if (phase === 'left') {
-      var dLeft = dist(p, d.eyes[0]);
-      var dRight = dist(p, d.eyes[1]);
-      // 오른쪽 눈을 먼저 누르면 살짝만 알려 주고, 벌점 없이 다시 받아요.
-      if (dRight + 10 < dLeft && dRight < 60) {
-        setHint('왼쪽 눈부터 톡!');
-        nudgeGuide();
-        SFX.play('ui');
-        return;
-      }
-      placeEye(0, p);
-      phase = 'right';
-      setHint('이제 오른쪽 눈!');
+    var expected = guideIndex;
+    var other = expected === 0 ? 1 : 0;
+    var nowSide = sideKo(expected === 0 ? 'left' : 'right');
+    var dExp = dist(p, d.eyes[expected]);
+    var dOther = dist(p, d.eyes[other]);
+
+    // 반대쪽 눈을 누르면: 붙이지 않고 콤보만 끊은 뒤, 같은 자리에서 다시 받아요.
+    if (dOther + 10 < dExp && dOther < 60) {
+      var had = breakCombo();
+      shakeDoll();
+      nudgeGuide();
+      SFX.play('miss');
+      setHint(had >= 2
+        ? '앗, 반대쪽! 콤보가 끊겼어요'
+        : '앗, 반대쪽! ' + nowSide + ' 눈을 톡', true);
+      return;
+    }
+
+    var snapped = dExp <= CONFIG.snapRadius;
+    placeEye(expected, p);
+    if (!snapped) {
+      // 안내된 자리에서 벗어난 곳을 누르면 그대로 붙되, 짝눈이 되며 콤보는 초기화.
+      breakCombo();
+      shakeDoll();
+      SFX.play('miss');
+    }
+
+    if (phase === 'first') {
+      phase = 'second';
+      guideIndex = other;
+      var nextSide = sideKo(other === 0 ? 'left' : 'right');
+      setHint((snapped ? '이제 ' : '짝눈 주의! 이제 ') + nextSide + ' 눈!', !snapped);
       renderGuide();
       return;
     }
 
-    placeEye(1, p);
     finishDoll();
   }
 
@@ -860,27 +973,50 @@
       state.eventTotal += 1;
     }
 
+    // 콤보: 실수 없이 이어 붙이면 +1, 한 번이라도 삐끗하면 0부터 다시.
+    var bonus = 0;
+    var milestone = 0;
+    if (clean) {
+      combo += 1;
+      if (combo > state.bestCombo) state.bestCombo = combo;
+      bonus = comboBonusFor(combo);
+      if (bonus > 0 && combo % CONFIG.comboMilestoneEvery === 0) milestone = combo;
+    } else {
+      combo = 0;
+    }
+
     var gain = CONFIG.recordPerDoll * (isFocus() ? 2 : 1);
     if (isSpecial) gain *= CONFIG.eventBonusMultiplier;
+    gain += bonus;
     state.todayRecord += gain;
 
     els.dollSvg.classList.remove('is-float', 'is-peek');
     els.dollSvg.classList.add('is-happy');
     SFX.play('chime');
-    spawnSparkles(isSpecial ? 9 : (skewed ? 6 : 4));
-    if (isSpecial || !skewed) spawnConfetti(isSpecial ? 12 : 6);
+    spawnSparkles((isSpecial ? 9 : (skewed ? 6 : 4)) + (combo >= 5 ? 3 : 0));
+    if (isSpecial || !skewed) spawnConfetti(isSpecial ? 12 : (combo >= 5 ? 10 : 6));
 
     var line;
     if (isSpecial) {
       line = '✨ 특별 주문 완성! +' + gain.toLocaleString('ko-KR') + '원';
     } else if (skewed) {
-      line = pick(CUTE_LINES);
+      line = '짝눈 주의! ' + pick(CUTE_LINES);
+    } else if (!clean) {
+      line = pick(BREAK_LINES);
+    } else if (combo >= 5) {
+      line = '🔥 ' + combo + '연속! +' + gain.toLocaleString('ko-KR') + '원';
     } else if (Math.random() < 0.22) {
       line = '귀여운 ' + DOLLS[state.doll].name + ' 완성!';
     } else {
       line = pick(HEAL_LINES);
     }
     setHint(line, true);
+
+    renderCombo();
+    if (milestone) {
+      SFX.play('combo');
+      toast('🔥 ' + milestone + '연속! 보너스 +' + bonus.toLocaleString('ko-KR') + '원');
+    }
 
     render();
     saveState();
@@ -1282,6 +1418,7 @@
 
     els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
 
+    renderCombo();
     refreshTabStates();
   }
 
@@ -1698,6 +1835,7 @@
     els.statTotal.textContent = state.total.toLocaleString('ko-KR') + '개';
     els.statToday.textContent = state.todayCount.toLocaleString('ko-KR') + '개';
     els.statEvent.textContent = state.eventToday.toLocaleString('ko-KR') + '개';
+    els.statCombo.textContent = state.bestCombo.toLocaleString('ko-KR') + '연속';
     render();
     openOverlay('recordModal');
     SFX.play('ui');
@@ -1795,6 +1933,8 @@
   els.resetBtn.addEventListener('click', function () {
     try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* noop */ }
     state = defaultState();
+    combo = 0;
+    comboShown = -1;
     window.DollEyeApp.state = state;
     SFX.setMuted(state.muted);
     closeOverlay('recordModal');
