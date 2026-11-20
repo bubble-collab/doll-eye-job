@@ -10,6 +10,7 @@
 - **랜덤 눈 순서(단순 안내)**: 인형마다 **왼쪽·오른쪽 중 먼저 붙일 눈이 랜덤**으로 정해지고, 점선 가이드와 한 줄 안내(`오른쪽 눈부터 톡`)가 그 눈을 가리켜요. 안내는 **순서를 알려 주는 가이드**일 뿐, 판정이 아니에요
 - **판정·벌점 없음**: 어느 쪽을 누르든 지금 차례 눈이 정위치에 깔끔하게 붙어요. 흔들림·실수 효과음·경고 문구·콤보 초기화가 없어요
 - **특별 주문 인형**: 5~9개마다 랜덤으로 황금 · 리본 · 왕관 인형이 나와요(가상 기록 2배)
+- **진동(햅틱)**: 눈알 하나 붙일 때 톡(`tap`) · 인형 완성 시(`tickMedium`) · 특별 주문(`success`) · 1박스 완료(`confetti`). 토스 앱은 토스 햅틱 브릿지로, 안드로이드 웹은 `navigator.vibrate` 짧은 진동으로 울리고, 진동이 없는 환경(iOS 사파리 등)은 조용히 넘어가요. 더보기 → 설정 및 기록에서 끌 수 있어요
 - **더보기** 메뉴: 친구에게 공유 · 알림 받기 · 설정 및 기록 · 안내 및 출처
 - **비게임(엔터테인먼트) 기준**: 승패 · 점수 · **콤보** · 등급 · 제한시간 · 순위 없음
 - 순수 클라이언트 사이드 정적 웹앱 (`iframe`, `eval`, SSR, 외부 라이브러리 없음)
@@ -39,7 +40,7 @@ python3 -m http.server 8765
 | --- | --- |
 | `index.html` | 화면 구조, 인형 SVG defs, 바텀시트·모달 |
 | `styles.css` | 디자인 토큰·레이아웃·애니메이션 (외부 리소스 없음) |
-| `app.js` | 인형/눈 생성, 가이드, 사운드, 광고·프로모션·공유·알림 브리지, 저장, 뒤로가기 |
+| `app.js` | 인형/눈 생성, 가이드, 사운드, 햅틱·광고·프로모션·공유·알림 브리지, 저장, 뒤로가기 |
 | `preview-390.html` | 390×844 화면 확인용 틀(iframe). 뒤에 붙인 `?banner=1`·`?event=gold`·`?box=3` 이 그대로 앱으로 넘어가요 |
 | `favicon.svg` | 탭 아이콘(인물 SVG). 외부 리소스 없이 같은 폴더 파일로만 씁니다 |
 | `preview.png` 등 | 이전(게임형) 프로토타입 화면 — 참고용 |
@@ -130,6 +131,20 @@ python3 -m http.server 8765
 ### 소리
 효과음 On/Off. 끄면 아이콘에 사선이 그어지고 설정이 저장됩니다.
 
+### 진동(햅틱)
+`더보기 → 설정 및 기록`의 **진동(햅틱)** 스위치로 끌 수 있어요(기본 켜짐 · `state.haptic`). 소리와 별개로 동작합니다.
+
+| 순간 | 토스 햅틱 타입 | 안드로이드 웹 진동 |
+| --- | --- | --- |
+| 눈알 하나 붙일 때 (`placeEye`) | `tap` | `15ms` |
+| 인형 하나 완성 (`finishDoll`) | `tickMedium` | `25ms` |
+| 특별 주문 인형 등장·완성 | `success` | `25ms` |
+| 1박스(100개) 완료 축하 (`celebrateBox`) | `confetti` | `[25, 40, 35]` |
+
+- 토스 브릿지(`Device.triggerHaptic` · `generateHapticFeedback`)가 **주입된 경우에만** 호출하고, 일반 웹 브라우저에서는 예외 없이 조용히 넘어갑니다.
+- 웹 폴백은 `navigator.vibrate`가 있는 환경(안드로이드 Chrome 등)에서만 울려요. iOS 사파리·토스 웹뷰에는 없어서 그냥 무시합니다.
+- 첫 화면 진입 시에는 울리지 않고, 사용자가 한 번 누른 뒤(`userHasTapped`)부터 동작해요.
+
 ### 부스터
 “광고 보고 30초 집중 모드”. **광고 사전 안내 → 데모 광고 → 30초 동안 가상 기록 2배**.
 진행 중에는 상단에 `집중 N초` 칩과 부스터 탭 강조가 표시됩니다.
@@ -139,7 +154,7 @@ python3 -m http.server 8765
 | --- | --- |
 | 친구에게 공유 | 토스 브릿지 → `navigator.share` → 클립보드 복사 순서로 시도하고 토스트로 안내 |
 | 알림 받기 | **버튼을 눌렀을 때만** 다크 바텀시트가 열립니다. “매일 인형 눈알 알림을 보내드릴까요? — 동의하고 알림받기 / 나중에” |
-| 설정 및 기록 | 완성 수·오늘 수·오늘 특별 주문, 눈 위치 가이드 스위치, 기록 초기화 |
+| 설정 및 기록 | 완성 수·오늘 수·오늘 특별 주문, 눈 위치 가이드 스위치, 진동(햅틱) 스위치, 기록 초기화 |
 | 안내 및 출처 | 가상 기록 고지, 광고·알림 안내, 그림·사운드 출처(직접 제작), 저장 위치 |
 
 - 알림은 진입 시 자동으로 묻지 않습니다(다크패턴 금지). 동의하면 `state.notify=true`, `state.notifyAt='20:00'`이 저장되고,
@@ -243,6 +258,24 @@ window.DollEyeNotification.register({
 
 - 브릿지가 없으면 브라우저 알림 권한을 **동의 후에만** 요청하고, 동의 상태는 로컬에 저장합니다.
 - 실제 매일 발송은 토스 스마트 발송(템플릿) 쪽에서 이뤄집니다. 웹 단독 배포에서는 권한·동의 상태만 남습니다.
+
+### 진동(햅틱)
+
+```js
+import { Device } from '@apps-in-toss/web-framework';
+
+window.DollEyeHaptic.register({
+  triggerHaptic({ type }) {          // type: 'tap' | 'tickMedium' | 'success' | 'confetti'
+    return Device.triggerHaptic({ type });
+  }
+});
+```
+
+- 3.0 이전 SDK라면 `generateHapticFeedback({ type })`를 그대로 넣어도 돼요(같은 함수의 옛 이름).
+- 브릿지를 연결하지 않아도 `window.AppsInToss.Device.triggerHaptic` · `window.TossApp.triggerHaptic` · `window.generateHapticFeedback` 가 주입돼 있으면 자동으로 찾아 씁니다.
+- 연결·주입이 없으면 `navigator.vibrate`로 폴백하고, 그것도 없으면 아무 일도 하지 않아요(에러 0건).
+- 토스 앱 **설정 > 진동**이 꺼져 있으면 토스 햅틱은 울리지 않습니다(앱 쪽 문제 아님).
+- 검증·디버깅: `window.DollEyeHaptic.calls`(최근 60건 `{kind, type, pattern, via, at}`) · `window.DollEyeHaptic.last` · `window.DollEyeHaptic.support()` · `window.DollEyeHaptic.test('confetti')`(설정 무시 강제 호출)
 
 ### 프로모션 보상 (사업자 등록 후)
 
@@ -599,8 +632,8 @@ export default defineConfig({
 - **저장소**: https://github.com/bubble-collab/doll-eye-job (기본 브랜치 `main`)
 - Pages는 **`gh-pages` 브랜치**를 배포 소스로 사용합니다. 파일을 고칠 때는 `main`에 커밋한 뒤
   `git branch -f gh-pages main && git push origin main gh-pages` 로 함께 올려 주세요.
-- 배포는 push 후 보통 30초~1분 안에 반영됩니다. (최종 `moktak25` 배포 커밋은 아래 커밋 해시 참고)
-- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak25` 숫자를 올려 주세요.
+- 배포는 push 후 보통 30초~1분 안에 반영됩니다. (최종 `moktak26` 배포 커밋 해시는 아래 검증표 참고)
+- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak26` 숫자를 올려 주세요.
   Pages가 정적 파일을 10분간 캐시하기 때문에, 버전을 바꾸지 않으면 휴대폰에 이전 파일이 보일 수 있어요.
 - 390×844 화면 확인: `https://bubble-collab.github.io/doll-eye-job/preview-390.html` (뒤에 `?banner=1` 등을 그대로 붙이면 됩니다)
 
@@ -611,6 +644,8 @@ export default defineConfig({
 - 광고는 **데모**입니다. 실제 수익·노출은 SDK 연결 후에 발생합니다.
 - 프로모션 보상은 자리만 있고, 사업자 등록·코드 발급·호스트 연결 전에는 동작하지 않습니다.
 - 알림은 동의 상태만 저장합니다. 실제 매일 발송은 토스 스마트 발송 템플릿 연결이 필요합니다.
+- 진동은 기기·OS에 따라 다릅니다: iOS 사파리(그리고 iOS 토스 웹뷰의 웹 폴백)는 `navigator.vibrate`가 없어 **토스 햅틱 브릿지가 없으면 울리지 않습니다**.
+- 토스 앱 설정 > 진동이 꺼져 있으면 햅틱이 울리지 않아요(앱에서 감지할 수 없음).
 - 공유는 `navigator.share`가 없는 데스크톱에서 클립보드 복사로 대체됩니다(권한이 막히면 실패 토스트).
 - 기록은 기기 브라우저에만 저장됩니다(서버 동기화 없음).
 - 인형 그림은 SVG 도형 기반이라 실제 봉제 질감과는 다릅니다(프로토타입 수준).

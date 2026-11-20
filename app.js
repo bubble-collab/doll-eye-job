@@ -427,7 +427,8 @@
       muted: false,
       accentSeed: 0,
       notify: false,     // 매일 알림 동의 여부 (로컬 저장)
-      notifyAt: '20:00'
+      notifyAt: '20:00',
+      haptic: true       // 진동(햅틱) 켜짐 (기본 켜짐 · 설정에서 끌 수 있어요)
     };
   }
 
@@ -473,6 +474,7 @@
     state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
     state.notify = !!state.notify;
     if (!state.notifyAt) state.notifyAt = CONFIG.notifyTime;
+    state.haptic = state.haptic !== false;
     // 예전 판(하루 목표 100개에서 멈추던 판) 저장값은 지나간 박스로 쳐서
     // 앱을 열자마자 지난 박스를 다시 축하하지 않게 해요.
     if (!hadLastBox) state.lastBox = Math.floor(state.todayCount / CONFIG.boxSize);
@@ -572,6 +574,7 @@
     statToday: $('statToday'),
     statEvent: $('statEvent'),
     guideSwitch: $('guideSwitch'),
+    hapticSwitch: $('hapticSwitch'),
     resetBtn: $('resetBtn'),
     aboutModal: $('aboutModal'),
     adNoticeModal: $('adNoticeModal'),
@@ -608,6 +611,7 @@
   var firstSide = 'left';    // 이번 인형에서 먼저 붙일 눈
   var guideIndex = 0;        // 지금 붙일 눈 (0 왼쪽 · 1 오른쪽)
   var lastPlaceAt = 0;       // 방금 눈을 붙인 시각(연타 가드)
+  var userHasTapped = false; // 이번 실행에서 사용자가 한 번이라도 눌렀는지 (첫 진동 방지)
 
   /* 특별 주문(이벤트) 인형: 다음 등장까지 남은 인형 수 (평균 7개에 한 번 → 12~14%) */
   var eventCountdown = 0;
@@ -670,6 +674,7 @@
     els.hint.classList.toggle('is-event', !!currentEvent);
     if (currentEvent) {
       setHint('✨ 특별 주문 인형! ' + sideKo(firstSide) + ' 눈부터 톡', true);
+      if (userHasTapped) HapticBridge.trigger('success');   // 특별 주문 등장 (25ms)
     } else {
       setHint(sideKo(firstSide) + ' 눈부터 톡');
     }
@@ -775,6 +780,7 @@
     els.eyesLayer.appendChild(createEye(pos, style));
     lastPlaceAt = Date.now();
     SFX.play('tok');
+    HapticBridge.trigger('tap');   // 눈 하나 붙는 가벼운 톡 (tap · 15ms)
     ripple(pos.x, pos.y);
   }
 
@@ -860,6 +866,7 @@
 
     els.dollSvg.classList.remove('is-float', 'is-peek');
     els.dollSvg.classList.add('is-happy');
+    HapticBridge.trigger(isSpecial ? 'success' : 'complete');   // 완성·특별 주문 (25ms)
     SFX.play('chime');
     spawnSparkles(isSpecial ? 9 : 4);
     spawnConfetti(isSpecial ? 12 : 6);
@@ -903,6 +910,7 @@
     boxCelebrateUntil = Date.now() + CONFIG.boxCelebrateMs;
     render();
     spawnConfetti(22);
+    HapticBridge.trigger('box');   // 1박스 완료 축하 (confetti · [25, 40, 35])
     SFX.play('fanfare');
     toast(boxNo + '박스 포장 완료!');
     setHint('📦 ' + boxNo + '박스 포장 완료 — 다음 박스 시작!', true);
@@ -1296,6 +1304,9 @@
       : '광고 보고 열기';
 
     els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
+    if (els.hapticSwitch) {
+      els.hapticSwitch.setAttribute('aria-checked', String(state.haptic !== false));
+    }
 
     refreshTabStates();
   }
@@ -1607,6 +1618,149 @@
   };
   window.DollEyeShare = ShareBridge;
 
+  /* ---------------------------------------------------------
+     15-b. 햅틱 (진동)
+     - 토스 앱(앱인토스 WebView): Device.triggerHaptic({ type }) /
+       generateHapticFeedback({ type }) — 브릿지가 주입돼 있을 때만 조용히 호출하고,
+       일반 웹 브라우저에서는 예외 없이 그냥 넘어가요.
+     - 안드로이드 웹 브라우저: navigator.vibrate 짧은 패턴으로 대신 울려요.
+       (iOS 사파리·토스 웹뷰에는 navigator.vibrate가 없어 조용히 무시)
+     - 동작 시점: 눈 하나 tap(15ms) · 인형 완성 tickMedium(25ms) ·
+       특별 주문 success(25ms) · 1박스 완료 confetti([25, 40, 35])
+     --------------------------------------------------------- */
+  var HAPTICS = {
+    tap:      { type: 'tap',        pattern: 15 },
+    complete: { type: 'tickMedium', pattern: 25 },
+    success:  { type: 'success',    pattern: 25 },
+    box:      { type: 'confetti',   pattern: [25, 40, 35] }
+  };
+
+  var HapticBridge = {
+    adapter: null,      // 호스트가 register로 연결한 어댑터
+    enabled: true,      // 설정 및 기록 → 진동(햅틱) 스위치
+    calls: [],          // 최근 호출 기록 (브라우저 검증·디버그용)
+    last: null,
+
+    register: function (adapter) {
+      if (!adapter) return false;
+      var ok = typeof adapter.triggerHaptic === 'function' ||
+               typeof adapter.haptic === 'function' ||
+               typeof adapter.generateHapticFeedback === 'function';
+      if (ok) this.adapter = adapter;
+      return ok;
+    },
+
+    setEnabled: function (v) {
+      this.enabled = v !== false;
+    },
+
+    /* 지금 이 환경에서 시도할 수 있는 햅틱 통로 목록 (토스 브릿지 우선) */
+    candidates: function () {
+      var out = [];
+      var a = this.adapter;
+
+      if (a) {
+        if (typeof a.triggerHaptic === 'function') {
+          out.push(function (t) { return a.triggerHaptic({ type: t }); });
+        }
+        if (typeof a.haptic === 'function') {
+          out.push(function (t) { return a.haptic(t); });
+        }
+        if (typeof a.generateHapticFeedback === 'function') {
+          out.push(function (t) { return a.generateHapticFeedback({ type: t }); });
+        }
+      }
+
+      [window.AppsInToss, window.TossApp, window.DollEyeHost].forEach(function (host) {
+        if (!host) return;
+        if (host.Device && typeof host.Device.triggerHaptic === 'function') {
+          out.push(function (t) { return host.Device.triggerHaptic({ type: t }); });
+        }
+        if (typeof host.triggerHaptic === 'function') {
+          out.push(function (t) { return host.triggerHaptic({ type: t }); });
+        }
+        if (typeof host.haptic === 'function') {
+          out.push(function (t) { return host.haptic(t); });
+        }
+        if (typeof host.generateHapticFeedback === 'function') {
+          out.push(function (t) { return host.generateHapticFeedback({ type: t }); });
+        }
+      });
+
+      if (typeof window.generateHapticFeedback === 'function') {
+        out.push(function (t) { return window.generateHapticFeedback({ type: t }); });
+      }
+
+      return out;
+    },
+
+    /* 웹 진동 폴백: 지원하지 않는 환경(iOS 사파리 등)에서는 false */
+    vibrate: function (pattern) {
+      try {
+        if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
+        return navigator.vibrate(pattern) !== false;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    record: function (name, spec, via) {
+      var entry = { kind: name, type: spec.type, pattern: spec.pattern, via: via, at: Date.now() };
+      this.calls.push(entry);
+      if (this.calls.length > 60) this.calls.shift();
+      this.last = entry;
+      return entry;
+    },
+
+    /* name: 'tap' | 'complete' | 'success' | 'box' · force: 설정을 잠깐 무시하고 테스트 */
+    trigger: function (name, force) {
+      var spec = HAPTICS[name];
+      if (!spec) return 'none';
+      if (!this.enabled && !force) {
+        this.record(name, spec, 'off');
+        return 'off';
+      }
+
+      // 1) 토스 앱 햅틱 브릿지 (있을 때만)
+      var list = this.candidates();
+      for (var i = 0; i < list.length; i++) {
+        try {
+          var res = list[i](spec.type);
+          if (res && typeof res.then === 'function') {
+            res.catch(function () { /* 브릿지 거부는 조용히 넘어가요 */ });
+          }
+          this.record(name, spec, 'toss');
+          return 'toss';
+        } catch (e) { /* 다음 후보로 */ }
+      }
+
+      // 2) 안드로이드 웹 브라우저 폴백
+      if (this.vibrate(spec.pattern)) {
+        this.record(name, spec, 'vibrate');
+        return 'vibrate';
+      }
+
+      this.record(name, spec, 'none');
+      return 'none';
+    },
+
+    test: function (name) {
+      return this.trigger(name, true);
+    },
+
+    reset: function () {
+      this.calls = [];
+      this.last = null;
+    },
+
+    support: function () {
+      var vib = false;
+      try { vib = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'; } catch (e) { vib = false; }
+      return { toss: this.candidates().length > 0, vibrate: vib };
+    }
+  };
+  window.DollEyeHaptic = HapticBridge;
+
   els.shareBtn.addEventListener('click', function () {
     SFX.unlock();
     closeOverlay('moreSheet');
@@ -1770,6 +1924,18 @@
     toast(state.guide ? '눈 위치 가이드를 켰어요' : '가이드 없이 감으로 톡톡!');
   });
 
+  /* 진동(햅틱): 기본 켜짐 · 끄면 소리와 별개로 진동만 멈춰요. */
+  els.hapticSwitch.addEventListener('click', function () {
+    SFX.unlock();
+    state.haptic = !state.haptic;
+    HapticBridge.setEnabled(state.haptic);
+    render();
+    saveState();
+    SFX.play('ui');
+    if (state.haptic) HapticBridge.trigger('tap');   // 켤 때는 손끝으로 바로 확인
+    toast(state.haptic ? '진동(햅틱)을 켰어요' : '진동(햅틱)을 껐어요');
+  });
+
   function switchDoll(doll) {
     SFX.unlock();
     if (state.doll === doll) {
@@ -1849,6 +2015,7 @@
     state = defaultState();
     window.DollEyeApp.state = state;
     SFX.setMuted(state.muted);
+    HapticBridge.setEnabled(state.haptic !== false);
     closeOverlay('recordModal');
     render();
     newDoll();
@@ -1866,6 +2033,7 @@
 
     loadState();
     SFX.setMuted(!!state.muted);
+    HapticBridge.setEnabled(state.haptic !== false);
 
     seedEventCountdown(true);
 
@@ -1873,7 +2041,7 @@
 
     // iOS 사파리/토스 웹뷰 오디오 잠금 해제: 첫 터치마다 확인
     ['pointerdown', 'touchstart', 'keydown'].forEach(function (type) {
-      document.addEventListener(type, function () { SFX.unlock(); }, { passive: true });
+      document.addEventListener(type, function () { SFX.unlock(); userHasTapped = true; }, { passive: true });
     });
 
     document.addEventListener('visibilitychange', function () {

@@ -7,7 +7,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙이며 잡생각을 비우는 힐링 엔터테인먼트, 인형 눈알 붙이기." />
   <title>인형 눈알 붙이기</title>
-  <link rel="stylesheet" href="styles.css?v=moktak25" />
+  <link rel="stylesheet" href="styles.css?v=moktak26" />
 </head>
 <body>
   <div class="app" id="app">
@@ -346,6 +346,12 @@
           <i aria-hidden="true"></i>
         </button>
       </div>
+      <div class="switch-row">
+        <span>진동(햅틱)</span>
+        <button class="switch" id="hapticSwitch" type="button" role="switch" aria-checked="true" aria-label="진동(햅틱)">
+          <i aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="modal-actions">
         <button class="btn btn--ghost" id="resetBtn" type="button">기록 초기화</button>
         <button class="btn btn--primary" type="button" data-close="recordModal">확인</button>
@@ -371,6 +377,8 @@
         <dd>알림은 <b>동의한 경우에만</b> 매일 저녁 8시에 보내요. 더보기 → 알림 받기에서 언제든 끌 수 있어요.</dd>
         <dt>그림과 소리</dt>
         <dd>인형 그림은 직접 그린 인라인 SVG, 소리는 Web Audio로 만든 합성음이에요. 외부 이미지·폰트·음원 요청은 없어요.</dd>
+        <dt>진동(햅틱)</dt>
+        <dd>눈을 붙일 때와 인형을 완성할 때 손끝으로 살짝 알려드려요. 토스 앱에서는 토스 햅틱으로, 안드로이드 웹 브라우저에서는 짧은 진동으로 울려요. 진동을 지원하지 않는 환경(iOS 사파리 등)에서는 조용히 넘어가고, 더보기 → 설정 및 기록에서 끌 수 있어요.</dd>
         <dt>저장</dt>
         <dd>만든 인형 수와 설정은 이 기기의 브라우저 저장소에만 남아요.</dd>
       </dl>
@@ -451,6 +459,6 @@
     <p style="padding:24px;text-align:center;font-family:sans-serif">이 미니앱을 사용하려면 자바스크립트를 켜 주세요.</p>
   </noscript>
 
-  <script src="app.js?v=moktak25"></script>
+  <script src="app.js?v=moktak26"></script>
 </body>
 </html>
