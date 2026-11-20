@@ -521,13 +521,11 @@
     progressTrack: document.querySelector('.progress__track'),
     progressTip: $('progressTip'),
     remainCount: $('remainCount'),
-    inBoxCount: $('inBoxCount'),
-    boxTotal: $('boxTotal'),
-    boxSizeText: $('boxSizeText'),
+    inBoxLine: $('inBoxLine'),
+    payoutChip: $('payoutChip'),
+    payoutAmount: $('payoutAmount'),
     focusPill: $('focusPill'),
     focusTimer: $('focusTimer'),
-    todayCount: $('todayCount'),
-    summaryRight: $('summaryRight'),
     stage: $('stage'),
     dollArea: $('dollArea'),
     hint: $('hint'),
@@ -1280,12 +1278,6 @@
     applyTheme();
     renderProgress();
 
-    els.todayCount.textContent = state.todayCount.toLocaleString('ko-KR');
-    var boxes = Math.floor(state.todayCount / CONFIG.boxSize);
-    els.summaryRight.textContent = boxes > 0
-      ? boxes + '박스 포장 완료 · ' + won(state.todayRecord)
-      : '가상 기록 ' + won(state.todayRecord);
-
     renderFocus();
 
     els.tabSound.classList.toggle('is-muted', !!state.muted);
@@ -1335,9 +1327,14 @@
     els.progressWrap.classList.toggle('is-boxdone', celebrating);
     els.progressWrap.classList.toggle('is-empty', shown === 0);
 
-    if (els.inBoxCount) els.inBoxCount.textContent = String(shown);
-    if (els.boxTotal) els.boxTotal.textContent = String(boxes);
-    if (els.boxSizeText) els.boxSizeText.textContent = String(boxSize);
+    if (els.inBoxLine) {
+      els.inBoxLine.innerHTML = boxes > 0
+        ? '누적 <b>' + boxes + '</b>박스 <span class="u">·</span> <b>' + shown + '</b>/' + boxSize + '개'
+        : '<b>' + shown + '</b> / ' + boxSize + '개';
+    }
+    if (els.payoutAmount) {
+      els.payoutAmount.textContent = won(state.todayRecord);
+    }
   }
 
   function renderFocus() {

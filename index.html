@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F6F3EB" />
   <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙이며 잡생각을 비우는 힐링 엔터테인먼트, 인형 눈알 붙이기." />
   <title>인형 눈알 붙이기</title>
-  <link rel="stylesheet" href="styles.css?v=moktak22" />
+  <link rel="stylesheet" href="styles.css?v=moktak23" />
 </head>
 <body>
   <div class="app" id="app">
@@ -30,8 +30,8 @@
       <h1 class="topbar__title">인형 눈알 붙이기</h1>
     </header>
 
-    <!-- 상단: 이번 박스 포장 진행 (1박스 = 100개) -->
-    <section class="progress" aria-label="이번 박스 포장 진행">
+    <!-- 상단: 이번 박스 포장 진행 + 오늘 현황 + 가상 정산 (한 곳에 통합 · 1박스 = 100개) -->
+    <section class="progress" aria-label="이번 박스 포장 진행과 가상 정산">
       <div class="progress__head">
         <p class="progress__label" id="progressLabel">1박스 포장 중..</p>
         <span class="focus-pill" id="focusPill" hidden>집중 <b id="focusTimer">30</b>초</span>
@@ -41,9 +41,12 @@
         <span class="progress__fill" id="progressFill"><i class="progress__shine" aria-hidden="true"></i></span>
         <span class="progress__tip" id="progressTip" aria-hidden="true"></span>
       </div>
-      <div class="progress__foot">
-        <span class="progress__inbox">이번 박스 <b id="inBoxCount">0</b>/<span id="boxSizeText">100</span>개</span>
-        <span class="progress__boxes">누적 <b id="boxTotal">0</b>박스</span>
+      <div class="progress__meta">
+        <p class="progress__inbox" id="inBoxLine"><b>0</b> / 100개</p>
+        <p class="progress__payout" id="payoutChip">
+          <span class="progress__payout-label">가상 정산</span>
+          <b class="progress__payout-amount" id="payoutAmount">0원</b>
+        </p>
       </div>
     </section>
 
@@ -123,11 +126,7 @@
       <p class="hint" id="hint" aria-live="polite">눈을 톡 눌러 보세요</p>
     </main>
 
-    <!-- 오늘 요약 한 줄 -->
-    <section class="summary" aria-label="오늘의 기록">
-      <p class="summary__left">오늘 <b id="todayCount">0</b>개</p>
-      <p class="summary__right" id="summaryRight">가상 기록 0원</p>
-    </section>
+    <!-- 고지 한 줄: 탭 바 바로 위에 아주 은은하게 -->
     <p class="notice-line">인형 눈알 붙이는 부업 · 기록은 전부 가상이에요</p>
 
     <!-- 하단 아이콘 탭 바 -->
@@ -451,6 +450,6 @@
     <p style="padding:24px;text-align:center;font-family:sans-serif">이 미니앱을 사용하려면 자바스크립트를 켜 주세요.</p>
   </noscript>
 
-  <script src="app.js?v=moktak22"></script>
+  <script src="app.js?v=moktak23"></script>
 </body>
 </html>

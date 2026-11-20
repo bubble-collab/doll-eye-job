@@ -106,10 +106,10 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ---------------- 진행 한 줄 ---------------- */
+/* ---------------- 상단 통합 현황 (박스 진행 + 누적 + 가상 정산) ---------------- */
 .progress {
   flex: 0 0 auto;
-  margin-top: 14px;
+  margin-top: 16px;
   padding: 0 3px;
 }
 
@@ -122,10 +122,10 @@ body {
 .progress__label {
   margin: 0;
   min-width: 0;
-  font-size: 17px;
+  font-size: 17.5px;
   font-weight: 600;
-  letter-spacing: -0.5px;
-  color: #3B362C;
+  letter-spacing: -0.55px;
+  color: #34302A;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -152,24 +152,26 @@ body {
   white-space: nowrap;
 }
 .progress__count b {
-  font-size: 30px;
+  display: inline-block;
+  font-size: 33px;
   font-weight: 800;
-  letter-spacing: -1.4px;
+  letter-spacing: -1.6px;
   line-height: 1;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  transform-origin: 60% 60%;
 }
 .progress__count span {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.3px;
-  color: #57513F;
+  color: #6B6454;
 }
 
 .progress__track {
   position: relative;
   height: 8px;
-  margin-top: 13px;
+  margin-top: 12px;
   border-radius: 999px;
   background: var(--track);
 }
@@ -226,6 +228,7 @@ body {
 .progress.is-pulse .progress__count span { animation: unitFade 0.44s ease both; }
 .progress.is-pulse .progress__tip { animation: tipPop 0.44s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
 .progress.is-pulse .progress__label { animation: labelNudge 0.44s ease both; }
+.progress.is-pulse .progress__payout-amount { animation: payoutPop 0.48s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
 
 /* 게이지 끝에서 톡 튀어 오르는 +1 */
 .progress__plus {
@@ -269,25 +272,70 @@ body {
   25% { opacity: 1; transform: translate(-50%, -2px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -16px) scale(1); }
 }
+@keyframes payoutPop {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.14); color: #C97A46; }
+  100% { transform: scale(1); }
+}
 
-/* 이번 박스 / 누적 박스 한 줄 */
-.progress__foot {
+/* 바 바로 아래 보조 메타 줄: 왼쪽 누적·이번 박스 / 오른쪽 가상 정산 배지 */
+.progress__meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 7px;
+  margin-top: 9px;
   padding: 0 1px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: -0.15px;
-  color: var(--ink-4);
-  font-variant-numeric: tabular-nums;
 }
-.progress__foot b { font-weight: 800; color: #6B6454; }
-.progress__inbox b { color: #8A7350; }
-.progress__boxes b { color: #8A7350; }
-.progress.is-boxdone .progress__foot b { color: #3D6B54; }
+
+.progress__inbox {
+  margin: 0;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.18px;
+  line-height: 1.2;
+  color: #A29A88;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.progress__inbox b { font-weight: 800; color: #8A7350; }
+.progress__inbox .u { font-weight: 500; color: #ADA491; }
+
+.progress__payout {
+  margin: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 4px 8px;
+  border-radius: 999px;
+  background: rgba(190, 168, 124, 0.15);
+  white-space: nowrap;
+  transition: background 0.3s ease;
+}
+.progress__payout-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: #9C8D6D;
+}
+.progress__payout-amount {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.35px;
+  color: #7A6535;
+  font-variant-numeric: tabular-nums;
+  transform-origin: 50% 70%;
+}
+.progress.is-boxdone .progress__inbox b,
+.progress.is-boxdone .progress__payout-amount { color: #3D6B54; }
+.progress.is-boxdone .progress__payout { background: rgba(108, 170, 140, 0.16); }
+.progress.is-boxdone .progress__payout-label,
+.progress.is-boxdone .progress__inbox { color: #7E9E8C; }
 
 /* ---------------- 인형 무대 (카드 없음) ---------------- */
 .stage {
@@ -434,48 +482,20 @@ body {
   animation: sparkle 0.7s ease-out forwards;
 }
 
-/* ---------------- 오늘 요약 ---------------- */
-.summary {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  padding: 14px 3px 0;
-  border-top: 1px solid var(--line);
-}
-.summary__left,
-.summary__right {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
-  color: #3B362C;
-  white-space: nowrap;
-}
-.summary__left b {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.summary__right {
-  font-size: 15px;
-  font-weight: 600;
-  color: #6B6454;
-  font-variant-numeric: tabular-nums;
-}
-
+/* ---------------- 고지 한 줄 (탭 바 바로 위, 아주 은은하게) ---------------- */
 .notice-line {
   flex: 0 0 auto;
-  margin: 7px 0 0;
-  padding: 0 3px;
-  font-size: 10.5px;
+  margin: 0;
+  padding: 2px 0 0;
+  text-align: center;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: -0.15px;
-  color: var(--ink-4);
+  letter-spacing: -0.1px;
+  line-height: 1.4;
+  color: #B3AA98;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------------- 하단 아이콘 탭 바 ---------------- */
@@ -1252,17 +1272,16 @@ body.has-banner .sheet__wrap { padding-bottom: calc(78px + var(--banner-h)); }
 @media (max-height: 740px) {
   .topbar { height: 50px; }
   .progress { margin-top: 10px; }
-  .progress__count b { font-size: 26px; }
-  .progress__label { font-size: 15.5px; }
+  .progress__count b { font-size: 29px; }
+  .progress__label { font-size: 16px; }
   .doll-svg { width: min(92vw, 44dvh, 344px); }
   .hint { margin-top: 4px; }
-  .summary { padding-top: 10px; }
   .tabbar { padding-top: 2px; }
   .tab { min-height: 52px; }
 }
 
 @media (max-height: 640px) {
-  .progress__foot { display: none; }
+  .progress__meta { display: none; }
   .doll-svg { width: min(82vw, 38dvh, 288px); }
   .notice-line { display: none; }
   .tab__label { font-size: 11px; }
