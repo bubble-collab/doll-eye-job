@@ -461,7 +461,25 @@ export default defineConfig({
 라이브 페이지(https://bubble-collab.github.io/doll-eye-job/)를 390×844 화면 크기로 열어 직접 눌러 확인한 내용입니다.
 (원격 브라우저의 창 크기는 1920×993 이라, 앱 영역을 390×844 로 잡고 그 영역만 잘라 확인했습니다. DOM 값으로 폭·높이를 함께 쟀습니다.)
 
-### 이번 판(11-20 오후 · 비게임 출시 기준 재정리)에서 라이브로 확인한 것 (moktak21)
+### 이번 판(11-20 오후 · 박스 게이지 수정)에서 라이브로 확인한 것 (moktak22)
+
+라이브 https://bubble-collab.github.io/doll-eye-job/?v=moktak22 를 열어 확인했습니다.
+
+**왜 안 움직였나**: 100개(하루 목표)를 채우면 `state.goalDone`이 한 번 켜지고 그 뒤로는 `Math.min(todayCount, 100)` / `Math.max(0, 100 - done)` 로 계산해서 게이지·`남음`·라벨이 **하루 종일 그 자리에 멈춰 있었어요.** (라벨이 `오늘 목표 완료`, 요약이 `N바퀴 완주`로 바뀌는 것도 그 순간부터예요.)
+
+| 항목 | 결과 |
+| --- | --- |
+| 로드 | `?v=moktak22` 로드 · 오류 없음. `1박스 포장 중..` · `N 남음` · 바 아래 `이번 박스 0/100개` · `누적 0박스` |
+| 인형 1개마다 | 완성할 때마다 `remainCount` −1, `progress__fill` width +1%(실측 4% → 5%, 14.9px → 18.6px), `이번 박스 N/100개` 갱신 |
+| 톡 튀는 연출 | MutationObserver 로 확인 — 완성 순간 `.progress` 에 `is-pulse`(561ms 뒤 제거), 카운트에 `countBump 0.44s`, 끝점에 `tipPop 0.44s`, 끝점에 `+1` 칩(`plusFloat 0.85s`, left 33.33%) 생성 |
+| 박스 채우는 순간 | `?box=3` 미리보기로 확인 — 3개째에 라벨 `2박스 완료!` · `0 남음` · 바가 초록빛으로 가득 · 토스트 `2박스 포장 완료!` · 요약 `2박스 포장 완료 · 210원` |
+| 다음 박스로 이어짐 | 1.4초 뒤 `3박스 포장 중..` · `3 남음` · `이번 박스 0/3개` · `누적 2박스` 로 자동 전환(멈춤 없음) |
+| 문구 교체 | 문서 전체 텍스트에 `바퀴`·`완주` 0건. `1박스 포장 중..` · `N박스 완료!` · `이번 박스 N/100개` · `누적 N박스` · `N박스 포장 완료 · 가상 기록 N원` |
+| 기록 유지 | 새로고침해도 오늘 기록·누적 박스가 그대로(`누적 2박스`), 지난 박스를 다시 축하하지 않음 |
+| 390×844 레이아웃 | 앱 영역을 390×844로 잡고 확인 — 스크롤 없이 한 화면(앱 높이 844, 스크롤 0), 인형 374px 그대로, 바 8px, 박스 한 줄 13px |
+| 스크린샷 | `downloads/doll-eye-job-box.png`(기본 100개 박스) · `downloads/doll-eye-job-box-mid.png`(박스 2/3) · `downloads/doll-eye-job-box-done.png`(2박스 완료 순간) |
+
+### 이전 판(11-20 오후 · 비게임 출시 기준 재정리)에서 라이브로 확인한 것 (moktak21)
 
 라이브 https://bubble-collab.github.io/doll-eye-job/?v=moktak21 를 열어 확인했습니다.
 
@@ -525,8 +543,8 @@ export default defineConfig({
 - **저장소**: https://github.com/bubble-collab/doll-eye-job (기본 브랜치 `main`)
 - Pages는 **`gh-pages` 브랜치**를 배포 소스로 사용합니다. 파일을 고칠 때는 `main`에 커밋한 뒤
   `git branch -f gh-pages main && git push origin main gh-pages` 로 함께 올려 주세요.
-- 배포는 push 후 보통 30초~1분 안에 반영됩니다. (최종 `moktak21` 배포 커밋 `706c605`)
-- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak21` 숫자를 올려 주세요.
+- 배포는 push 후 보통 30초~1분 안에 반영됩니다. (최종 `moktak22` 배포 커밋 `603f6ae`)
+- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak22` 숫자를 올려 주세요.
   Pages가 정적 파일을 10분간 캐시하기 때문에, 버전을 바꾸지 않으면 휴대폰에 이전 파일이 보일 수 있어요.
 
 ---

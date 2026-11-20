@@ -369,7 +369,7 @@
         tone({ freq: 1046.5, dur: 0.24, gain: 0.13, type: 'sine', delay: 0.08 });
         tone({ freq: 1568, dur: 0.2, gain: 0.05, type: 'sine', delay: 0.16 });
       },
-      // 목표 달성 / 리본 열림
+      // 박스 완료 / 리본 열림
       fanfare: function () {
         [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
           tone({ freq: f, dur: 0.3, gain: 0.13, type: 'triangle', delay: i * 0.09 });
