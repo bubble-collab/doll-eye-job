@@ -144,23 +144,6 @@ body {
 }
 .focus-pill b { font-weight: 800; font-variant-numeric: tabular-nums; }
 
-/* 연속 콤보 칩: 진행 한 줄 안에서 진행을 방해하지 않는 작은 칩 */
-.combo-chip {
-  flex: 0 0 auto;
-  padding: 3px 8px 4px;
-  border-radius: 999px;
-  background: #F7E4D8;
-  color: #A85A36;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.combo-chip b { font-weight: 800; }
-.combo-chip.is-hot { background: #F5D3B8; color: #8E3F1F; }
-.combo-chip.is-pop { animation: chipPop 0.32s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
-
 .progress__count {
   margin: 0 0 0 auto;
   display: flex;
@@ -222,9 +205,6 @@ body {
   align-items: center;
   justify-content: center;
 }
-
-/* 삐끗: 콤보가 끊길 때 인형이 짧게 흔들려요 */
-.doll-area.is-shake { animation: dollShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
 .doll-svg {
   flex: 0 0 auto;
@@ -291,7 +271,6 @@ body {
   animation: guideSpin 9s linear infinite;
 }
 .guide-ring.is-soft { opacity: 0.38; }
-.guide-ring.is-nudge { animation: guideNudge 0.5s ease-in-out 2; }
 
 .tap-pointer { filter: drop-shadow(0 3px 5px rgba(110, 62, 34, 0.22)); }
 .tap-pointer__bob { animation: pointerBob 1.2s ease-in-out infinite; }
@@ -759,13 +738,13 @@ body {
 /* 설정 및 기록 */
 .stat-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
   margin: 14px 0 10px;
 }
 .stat-grid span {
   flex: 1;
-  padding: 12px 14px;
+  padding: 11px 10px;
   border-radius: 14px;
   background: var(--bg-soft);
   text-align: left;
@@ -777,7 +756,7 @@ body {
 .stat-grid strong {
   display: block;
   margin-top: 3px;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.5px;
   color: var(--ink);
@@ -1073,23 +1052,11 @@ body {
   0%, 100% { transform: rotate(0); }
   50% { transform: rotate(-4deg) translateY(-3px); }
 }
-@keyframes dollShake {
-  0%, 100% { transform: translateX(0) rotate(0); }
-  16% { transform: translateX(-6px) rotate(-1.3deg); }
-  36% { transform: translateX(5px) rotate(1.1deg); }
-  56% { transform: translateX(-4px) rotate(-0.8deg); }
-  76% { transform: translateX(2px) rotate(0.4deg); }
-}
 @keyframes guideHalo {
   0%, 100% { opacity: 0.06; transform: scale(0.94); }
   50% { opacity: 0.16; transform: scale(1.1); }
 }
 @keyframes guideSpin { to { stroke-dashoffset: -66; } }
-@keyframes guideNudge {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
-}
 @keyframes pointerBob {
   0%, 100% { transform: translateY(-2px); opacity: 0.9; }
   50% { transform: translateY(4px); opacity: 1; }

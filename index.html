@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F6F3EB" />
   <meta name="description" content="곰돌이와 토끼 인형에 눈알을 톡톡 붙이며 잡생각을 비우는 힐링 엔터테인먼트, 인형 눈알 붙이기." />
   <title>인형 눈알 붙이기</title>
-  <link rel="stylesheet" href="styles.css?v=moktak20" />
+  <link rel="stylesheet" href="styles.css?v=moktak21" />
 </head>
 <body>
   <div class="app" id="app">
@@ -35,7 +35,6 @@
       <div class="progress__head">
         <p class="progress__label" id="progressLabel">눈알 붙이는 중..</p>
         <span class="focus-pill" id="focusPill" hidden>집중 <b id="focusTimer">30</b>초</span>
-        <span class="combo-chip" id="comboChip" hidden aria-live="off">🔥 <b>2</b>연속</span>
         <p class="progress__count"><b id="remainCount">100</b><span>남음</span></p>
       </div>
       <div class="progress__track" role="progressbar" aria-label="오늘의 목표" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
@@ -335,7 +334,6 @@
         <span>완성한 인형<strong id="statTotal">0</strong></span>
         <span>오늘 완성<strong id="statToday">0</strong></span>
         <span>특별 주문<strong id="statEvent">0</strong></span>
-        <span>최고 콤보<strong id="statCombo">0연속</strong></span>
       </div>
       <div class="switch-row">
         <span>눈 위치 가이드</span>
@@ -357,9 +355,9 @@
       <h2 id="aboutTitle">안내 및 출처</h2>
       <dl class="about-list">
         <dt>랜덤 눈 순서</dt>
-        <dd>인형마다 <b>왼쪽·오른쪽</b> 중 먼저 붙일 눈이 랜덤으로 정해져요. 점선 가이드와 한 줄 안내가 가리키는 눈부터 톡 붙이면 돼요.</dd>
-        <dt>콤보</dt>
-        <dd>순서대로 실수 없이 완성하면 <b>연속 콤보</b>가 쌓이고, 5연속·10연속부터는 가상 기록에 작은 보너스가 붙어요. 반대쪽 눈이나 다른 곳을 누르면 콤보가 <b>0</b>으로 돌아가고, 바로 이어서 붙일 수 있어요. 점수·등급·제한시간은 없어요.</dd>
+        <dd>인형마다 <b>왼쪽·오른쪽</b> 중 먼저 붙일 눈이 랜덤으로 정해져요. 점선 가이드와 한 줄 안내가 가리키는 눈을 톡 누르면 정위치에 깔끔하게 붙어요. 순서와 상관없이 언제 누르든 실패 없이 붙어요.</dd>
+        <dt>비게임(엔터테인먼트) 기준</dt>
+        <dd>이 앱은 <b>승패·점수·콤보·등급·제한시간·순위가 없는</b> 힐링 엔터테인먼트예요. 맞히고 틀리는 판정도 없고, 실수해도 벌점이나 멈춤이 없어요. 그저 눈알을 톡톡 붙이며 잠깐 쉬어가는 앱이에요.</dd>
         <dt>가상 기록</dt>
         <dd>오늘의 기록은 앱을 즐기기 위한 <b>가상의 숫자</b>예요. 실제 현금이나 토스포인트로 지급되지 않아요.</dd>
         <dt>광고</dt>
@@ -448,6 +446,6 @@
     <p style="padding:24px;text-align:center;font-family:sans-serif">이 미니앱을 사용하려면 자바스크립트를 켜 주세요.</p>
   </noscript>
 
-  <script src="app.js?v=moktak20"></script>
+  <script src="app.js?v=moktak21"></script>
 </body>
 </html>
