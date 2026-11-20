@@ -450,7 +450,7 @@ export default defineConfig({
 - Pages는 **`gh-pages` 브랜치**를 배포 소스로 사용합니다. 파일을 고칠 때는 `main`에 커밋한 뒤
   `git branch -f gh-pages main && git push origin main gh-pages` 로 함께 올려 주세요.
 - 배포는 push 후 보통 30초~1분 안에 반영됩니다.
-- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak16` 숫자를 올려 주세요.
+- `styles.css` / `app.js`를 고치면 `index.html`의 `?v=moktak17` 숫자를 올려 주세요.
   Pages가 정적 파일을 10분간 캐시하기 때문에, 버전을 바꾸지 않으면 휴대폰에 이전 파일이 보일 수 있어요.
 
 ---
