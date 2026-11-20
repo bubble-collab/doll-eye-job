@@ -1863,6 +1863,10 @@
      20. 시작
      --------------------------------------------------------- */
   function init() {
+    // 박스 크기 미리보기: ?box=3 처럼 작은 박스로 "채우는 순간"을 빠르게 확인할 때 (기본 100)
+    var bx = /[?&]box=(\d{1,3})\b/.exec(window.location.search);
+    if (bx) CONFIG.boxSize = Math.max(2, Math.min(100, Number(bx[1]) || CONFIG.boxSize));
+
     loadState();
     SFX.setMuted(!!state.muted);
 

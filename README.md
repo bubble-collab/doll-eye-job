@@ -344,6 +344,8 @@ TossAds.initialize({
   `https://bubble-collab.github.io/doll-eye-job/?banner=1` 로 열어 보세요 — 102px 자리에 안내문이 표시되고
   탭 바·토스트 위치가 함께 올라간 레이아웃을 확인할 수 있습니다.
 - 특별 주문 인형 모양 미리보기: `?event=gold` · `?event=ribbon` · `?event=crown` (첫 인형만 지정한 종류로).
+- 박스 채우는 순간 미리보기: `?box=3` 처럼 박스 크기를 잠시 줄여 볼 수 있어요(2~100, 기본 100).
+  실제 값은 `CONFIG.boxSize` 하나로 바뀌고, 저장되는 기록은 그대로예요.
 
 ### 앱인토스 프로젝트로 감싸기
 
