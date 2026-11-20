@@ -326,6 +326,7 @@ TossAds.initialize({
 - 웹 미리보기: 브릿지가 없으면 배너 자리를 잡지 않아요(탭 바가 화면 맨 아래). 배너가 들어온 모습을 보려면
   `https://bubble-collab.github.io/doll-eye-job/?banner=1` 로 열어 보세요 — 102px 자리에 안내문이 표시되고
   탭 바·토스트 위치가 함께 올라간 레이아웃을 확인할 수 있습니다.
+- 특별 주문 인형 모양 미리보기: `?event=gold` · `?event=ribbon` · `?event=crown` (첫 인형만 지정한 종류로).
 
 ### 앱인토스 프로젝트로 감싸기
 

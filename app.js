@@ -604,6 +604,7 @@
   var eventCountdown = 0;
   var lastEventKind = '';
   var currentEvent = null;   // 지금 올라온 인형이 특별 주문이면 'gold' | 'ribbon' | 'crown'
+  var forcedEvent = null;    // ?event= 프리뷰용 (첫 인형만 지정한 특별 주문)
 
   function seedEventCountdown(first) {
     var min = first ? 3 : CONFIG.eventGapMin;
@@ -612,6 +613,12 @@
   }
 
   function rollEventDoll() {
+    if (forcedEvent) {
+      var forced = forcedEvent;
+      forcedEvent = null;
+      lastEventKind = forced;
+      return forced;
+    }
     if (eventCountdown > 0) {
       eventCountdown -= 1;
       return null;
@@ -839,6 +846,7 @@
      --------------------------------------------------------- */
   function finishDoll() {
     phase = 'done';
+    els.guideLayer.innerHTML = '';   // 완성된 인형에 가이드가 남지 않게
 
     var skewed = taps.some(function (t) { return !t.snapped; });
     var isSpecial = !!currentEvent;
@@ -1834,6 +1842,13 @@
     // 하단 배너 자리 미리보기: ?banner=1 (웹에서만 · 토스 앱은 브릿지가 채워요)
     if (/[?&]banner=(1|preview)\b/.test(window.location.search)) {
       setBannerActive(true, '하단 고정 배너 자리 102px · 토스 앱에서 광고가 채워져요');
+    }
+
+    // 특별 주문 미리보기: ?event=gold | ribbon | crown (첫 인형만)
+    var ev = /[?&]event=(gold|ribbon|crown)\b/.exec(window.location.search);
+    if (ev) {
+      forcedEvent = ev[1];
+      newDoll();
     }
   }
 
