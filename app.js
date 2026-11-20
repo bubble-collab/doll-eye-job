@@ -59,6 +59,9 @@
     // 5연속마다 가볍게 축하해요.
     comboMilestoneEvery: 5,
 
+    // 붙인 직후의 더블 탭을 실수로 치지 않도록 막는 시간(ms)
+    tapGuardMs: 220,
+
     // 매일 알림 희망 시각 (KST)
     notifyTime: '20:00',
 
@@ -641,6 +644,7 @@
   var clean = true;          // 이번 인형에서 실수 없이 붙였는지
   var combo = 0;             // 연속으로 실수 없이 완성한 인형 수
   var comboShown = -1;       // 칩 애니메이션 중복 방지
+  var lastPlaceAt = 0;       // 방금 눈을 붙인 시각(연타 가드)
 
   /* 특별 주문(이벤트) 인형: 다음 등장까지 남은 인형 수 (평균 7개에 한 번 → 12~14%) */
   var eventCountdown = 0;
@@ -688,6 +692,7 @@
     phase = 'first';
     clean = true;
     taps = [];
+    lastPlaceAt = 0;
     currentEvent = rollEventDoll();
     els.eyesLayer.innerHTML = '';
     els.fxLayer.innerHTML = '';
@@ -829,6 +834,7 @@
 
     els.eyesLayer.appendChild(createEye(pos, style));
     taps.push({ snapped: snapped, x: pos.x, y: pos.y });
+    lastPlaceAt = Date.now();
     SFX.play(snapped ? 'tok' : 'pok');
     ripple(pos.x, pos.y);
     return snapped;
@@ -914,6 +920,9 @@
       setHint('인형 얼굴을 톡톡 눌러 보세요');
       return;
     }
+
+    // 붙이는 순간 손가락이 한 번 더 튀는 경우(더블 탭)는 실수로 치지 않고 무시해요.
+    if (Date.now() - lastPlaceAt < CONFIG.tapGuardMs) return;
 
     var expected = guideIndex;
     var other = expected === 0 ? 1 : 0;
