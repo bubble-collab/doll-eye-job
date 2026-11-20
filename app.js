@@ -20,8 +20,9 @@
     // 웹 공유 링크 (친구에게 공유)
     appUrl: 'https://bubble-collab.github.io/doll-eye-job/',
 
-    // 오늘의 목표: 목탁처럼 "은은한 목표 감각"만 주는 숫자예요.
-    dailyGoal: 100,
+    // 1박스 = 100개. 100개를 채우면 바로 다음 박스가 이어져요 (부업 포장 리듬)
+    boxSize: 100,
+    boxCelebrateMs: 1400,   // 박스 하나를 채운 순간 축하를 보여 주는 시간(ms)
 
     // 인형 1개를 완성할 때 쌓이는 가상 기록 (실제 부업 후기처럼 소박한 단가 · 지급 없음)
     recordPerDoll: 30,
@@ -417,7 +418,7 @@
       eventToday: 0,     // 오늘 받은 특별 주문 인형
       eventTotal: 0,     // 누적 특별 주문 인형
       sinceRest: 0,      // 마지막 쉼표 배너 이후 완성 수
-      goalDone: false,   // 오늘 목표 달성 표시
+      lastBox: 0,        // 오늘 마지막으로 채운 박스 번호 (같은 박스를 두 번 축하하지 않게)
       promotionGranted: false,
       specialRibbon: false,
       theme: 0,          // 배경 테마 인덱스 (0 크림 · 1 살구 · 2 민트 · 3 버터 · 4 라벤더 · 5 스페셜)
@@ -434,11 +435,14 @@
 
   function loadState() {
     var raw = null;
+    var saved = null;
+    var hadLastBox = false;
     try { raw = window.localStorage.getItem(CONFIG.storageKey); } catch (e) { raw = null; }
     if (raw) {
       try {
-        var saved = JSON.parse(raw);
+        saved = JSON.parse(raw);
         if (saved && typeof saved === 'object') {
+          hadLastBox = saved.lastBox !== undefined;
           for (var k in state) {
             if (Object.prototype.hasOwnProperty.call(state, k) && saved[k] !== undefined) {
               state[k] = saved[k];
@@ -453,7 +457,7 @@
       state.todayRecord = 0;
       state.eventToday = 0;
       state.sinceRest = 0;
-      state.goalDone = false;
+      state.lastBox = 0;
       state.promotionGranted = false;
       state.focusUntil = 0;
     }
@@ -469,6 +473,10 @@
     state.sinceRest = Math.max(0, Math.min(CONFIG.restEvery, Number(state.sinceRest) || 0));
     state.notify = !!state.notify;
     if (!state.notifyAt) state.notifyAt = CONFIG.notifyTime;
+    // 예전 판(하루 목표 100개에서 멈추던 판) 저장값은 지나간 박스로 쳐서
+    // 앱을 열자마자 지난 박스를 다시 축하하지 않게 해요.
+    if (!hadLastBox) state.lastBox = Math.floor(state.todayCount / CONFIG.boxSize);
+    state.lastBox = Math.max(0, Number(state.lastBox) || 0);
   }
 
   var saveTimer = null;
@@ -510,7 +518,12 @@
     progressLabel: $('progressLabel'),
     progressBar: $('progressBar'),
     progressFill: $('progressFill'),
+    progressTrack: document.querySelector('.progress__track'),
+    progressTip: $('progressTip'),
     remainCount: $('remainCount'),
+    inBoxCount: $('inBoxCount'),
+    boxTotal: $('boxTotal'),
+    boxSizeText: $('boxSizeText'),
     focusPill: $('focusPill'),
     focusTimer: $('focusTimer'),
     todayCount: $('todayCount'),
@@ -588,6 +601,9 @@
   var advanceTimer = null;
   var focusInterval = null;
   var bannerTimer = null;
+  var boxTimer = null;            // 박스 완료 축하 표시 타이머
+  var boxCelebrateUntil = 0;      // 이 시각까지는 100% · "N박스 완료!"를 보여요
+  var pulseTimer = null;          // 게이지 톡 튀는 연출 타이머
   var dollsMade = 0;         // 이번 실행에서 만든 인형 수(가이드 세기용)
 
   /* 랜덤 눈 순서 (판정 없음 · 단순 순서 안내) */
@@ -861,9 +877,9 @@
     setHint(line, true);
 
     render();
+    checkBox();
+    pulseProgress();
     saveState();
-
-    checkGoal();
 
     // 쉼표 배너 (흐름을 끊지 않는 가벼운 알림)
     if (state.sinceRest >= CONFIG.restEvery) {
@@ -877,15 +893,55 @@
     advanceTimer = window.setTimeout(newDoll, Math.max(240, nextDelay));
   }
 
-  function checkGoal() {
-    if (!state.goalDone && state.todayCount >= CONFIG.dailyGoal) {
-      state.goalDone = true;
-      spawnConfetti(18);
-      SFX.play('fanfare');
-      toast('오늘의 목표 ' + CONFIG.dailyGoal + '개 달성!');
-      maybeGrantPromotion();
+  /* 박스를 하나 채울 때마다 축하하고, 바로 다음 박스로 이어져요. */
+  function checkBox() {
+    var boxNo = Math.floor(state.todayCount / CONFIG.boxSize);
+    if (boxNo <= state.lastBox) return;
+    state.lastBox = boxNo;
+    celebrateBox(boxNo);
+  }
+
+  function celebrateBox(boxNo) {
+    boxCelebrateUntil = Date.now() + CONFIG.boxCelebrateMs;
+    render();
+    spawnConfetti(22);
+    SFX.play('fanfare');
+    toast(boxNo + '박스 포장 완료!');
+    setHint('📦 ' + boxNo + '박스 포장 완료 — 다음 박스 시작!', true);
+    if (boxNo === 1) maybeGrantPromotion();
+    window.clearTimeout(boxTimer);
+    boxTimer = window.setTimeout(function () {
+      boxCelebrateUntil = 0;
       render();
-    }
+    }, CONFIG.boxCelebrateMs);
+  }
+
+  /* 인형 하나를 끝낼 때마다 게이지가 살아 움직이는 느낌을 줘요. */
+  function pulseProgress() {
+    var wrap = els.progressWrap;
+    if (!wrap) return;
+    wrap.classList.remove('is-pulse');
+    void wrap.offsetWidth;   // 애니메이션을 다시 틀기 위한 리플로우
+    wrap.classList.add('is-pulse');
+    window.clearTimeout(pulseTimer);
+    pulseTimer = window.setTimeout(function () {
+      wrap.classList.remove('is-pulse');
+    }, 560);
+    spawnPlusOne();
+  }
+
+  function spawnPlusOne() {
+    if (!els.progressTrack || !CONFIG.boxSize) return;
+    var shown = boxCelebrateUntil > Date.now() ? CONFIG.boxSize : state.todayCount % CONFIG.boxSize;
+    var pct = Math.max(0, Math.min(100, (shown / CONFIG.boxSize) * 100));
+    var plus = document.createElement('i');
+    plus.className = 'progress__plus';
+    plus.textContent = '+1';
+    plus.style.left = pct + '%';
+    els.progressTrack.appendChild(plus);
+    window.setTimeout(function () {
+      if (plus.parentNode) plus.parentNode.removeChild(plus);
+    }, 900);
   }
 
   /* 프로모션 자리: 설정과 호스트 연결이 있을 때만 조용히 호출돼요. */
@@ -895,7 +951,7 @@
     state.promotionGranted = true;
     saveState();
     PromotionBridge.grant(CONFIG.promotionCode).then(function (res) {
-      if (res && res.granted) toast('오늘의 목표 보상이 적용됐어요');
+      if (res && res.granted) toast('첫 박스 포장 보상이 적용됐어요');
     }).catch(function () { /* 실패해도 앱은 계속 */ });
   }
 
@@ -1222,23 +1278,12 @@
      --------------------------------------------------------- */
   function render() {
     applyTheme();
-    var done = Math.min(state.todayCount, CONFIG.dailyGoal);
-    var remain = Math.max(0, CONFIG.dailyGoal - done);
-    var ratio = CONFIG.dailyGoal ? done / CONFIG.dailyGoal : 0;
-
-    els.remainCount.textContent = String(remain);
-    els.progressLabel.textContent = state.goalDone ? '오늘 목표 완료' : '눈알 붙이는 중..';
-    els.progressFill.style.width = (ratio * 100).toFixed(1) + '%';
-    els.progressBar.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
-    els.progressBar.setAttribute('aria-valuetext', state.goalDone
-      ? '오늘 목표를 모두 채웠어요'
-      : '오늘 목표까지 ' + remain + '개 남았어요');
-    els.progressWrap.classList.toggle('is-done', state.goalDone);
+    renderProgress();
 
     els.todayCount.textContent = state.todayCount.toLocaleString('ko-KR');
-    var laps = Math.floor(state.todayCount / CONFIG.dailyGoal);
-    els.summaryRight.textContent = laps > 0
-      ? laps + '바퀴 완주'
+    var boxes = Math.floor(state.todayCount / CONFIG.boxSize);
+    els.summaryRight.textContent = boxes > 0
+      ? boxes + '박스 포장 완료 · ' + won(state.todayRecord)
       : '가상 기록 ' + won(state.todayRecord);
 
     renderFocus();
@@ -1261,6 +1306,38 @@
     els.guideSwitch.setAttribute('aria-checked', String(!!state.guide));
 
     refreshTabStates();
+  }
+
+  /* 상단 "이번 박스" 게이지: 인형 1개마다 눈에 보이게 차오르고, 100개를 채우면 다음 박스로 이어져요. */
+  function renderProgress() {
+    var boxSize = CONFIG.boxSize || 1;
+    var boxes = Math.floor(state.todayCount / boxSize);
+    var inBox = state.todayCount % boxSize;
+    var celebrating = boxCelebrateUntil > Date.now() && inBox === 0 && state.todayCount > 0;
+    var shown = celebrating ? boxSize : inBox;
+    var boxNo = celebrating ? boxes : boxes + 1;
+    var remain = Math.max(0, boxSize - shown);
+    var ratio = Math.min(1, shown / boxSize);
+    var pct = ratio * 100;
+
+    els.remainCount.textContent = String(remain);
+    els.progressLabel.textContent = celebrating
+      ? boxNo + '박스 완료!'
+      : boxNo + '박스 포장 중..';
+    els.progressFill.style.width = pct.toFixed(2) + '%';
+    if (els.progressTip) {
+      els.progressTip.style.left = pct.toFixed(2) + '%';
+    }
+    els.progressBar.setAttribute('aria-valuenow', String(Math.round(pct)));
+    els.progressBar.setAttribute('aria-valuetext', celebrating
+      ? boxNo + '박스 포장을 모두 채웠어요'
+      : boxNo + '박스 포장 중, ' + boxSize + '개 중 ' + shown + '개, ' + remain + '개 남았어요');
+    els.progressWrap.classList.toggle('is-boxdone', celebrating);
+    els.progressWrap.classList.toggle('is-empty', shown === 0);
+
+    if (els.inBoxCount) els.inBoxCount.textContent = String(shown);
+    if (els.boxTotal) els.boxTotal.textContent = String(boxes);
+    if (els.boxSizeText) els.boxSizeText.textContent = String(boxSize);
   }
 
   function renderFocus() {

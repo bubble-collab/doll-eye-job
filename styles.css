@@ -167,22 +167,127 @@ body {
 }
 
 .progress__track {
-  height: 4px;
+  position: relative;
+  height: 8px;
   margin-top: 13px;
   border-radius: 999px;
   background: var(--track);
-  overflow: hidden;
 }
 .progress__fill {
+  position: relative;
   display: block;
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: var(--fill);
-  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+  background: linear-gradient(90deg, #EFC365 0%, #E79B5C 55%, #E8775E 100%);
+  box-shadow: 0 1px 6px rgba(216, 122, 74, 0.28);
+  overflow: hidden;
+  transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease, box-shadow 0.3s ease;
 }
-.progress.is-done .progress__fill { background: #94B49F; }
-.progress.is-done .progress__count b { color: #3D6B54; }
+/* 지금 채워지는 끝자락에 흐르는 빛 */
+.progress__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0.62) 48%, rgba(255, 255, 255, 0) 66%);
+  background-size: 220% 100%;
+  animation: gaugeShine 2.8s linear infinite;
+  pointer-events: none;
+}
+/* 게이지 끝점: 톡 튀는 작은 불빛 */
+.progress__tip {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #FFF7E8;
+  box-shadow: 0 0 0 2px rgba(232, 138, 90, 0.28), 0 0 10px 2px rgba(232, 138, 90, 0.45);
+  transform: translateY(-50%);
+  transition: left 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+  pointer-events: none;
+}
+.progress.is-empty .progress__tip { opacity: 0; }
+
+/* 박스 하나를 채운 순간 */
+.progress.is-boxdone .progress__fill {
+  background: linear-gradient(90deg, #8CCBAE 0%, #6FBF9A 60%, #57AE8A 100%);
+  box-shadow: 0 1px 8px rgba(87, 174, 138, 0.34);
+}
+.progress.is-boxdone .progress__tip {
+  box-shadow: 0 0 0 2px rgba(87, 174, 138, 0.3), 0 0 14px 3px rgba(87, 174, 138, 0.5);
+}
+.progress.is-boxdone .progress__count b { color: #3D6B54; }
+.progress.is-boxdone .progress__label { color: #3D6B54; }
+
+/* 인형 하나를 끝낼 때마다 톡 튀는 반응 */
+.progress.is-pulse .progress__count b { animation: countBump 0.44s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.progress.is-pulse .progress__count span { animation: unitFade 0.44s ease both; }
+.progress.is-pulse .progress__tip { animation: tipPop 0.44s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.progress.is-pulse .progress__label { animation: labelNudge 0.44s ease both; }
+
+/* 게이지 끝에서 톡 튀어 오르는 +1 */
+.progress__plus {
+  position: absolute;
+  top: -3px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: #D9704F;
+  pointer-events: none;
+  animation: plusFloat 0.85s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes gaugeShine {
+  0% { background-position: 140% 0; }
+  100% { background-position: -40% 0; }
+}
+@keyframes countBump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); color: #D9704F; }
+  100% { transform: scale(1); }
+}
+@keyframes unitFade {
+  0% { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+@keyframes tipPop {
+  0% { transform: translateY(-50%) scale(1); }
+  40% { transform: translateY(-50%) scale(1.85); }
+  100% { transform: translateY(-50%) scale(1); }
+}
+@keyframes labelNudge {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+@keyframes plusFloat {
+  0% { opacity: 0; transform: translate(-50%, 4px) scale(0.8); }
+  25% { opacity: 1; transform: translate(-50%, -2px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -16px) scale(1); }
+}
+
+/* 이번 박스 / 누적 박스 한 줄 */
+.progress__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 0 1px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.15px;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+.progress__foot b { font-weight: 800; color: #6B6454; }
+.progress__inbox b { color: #8A7350; }
+.progress__boxes b { color: #8A7350; }
+.progress.is-boxdone .progress__foot b { color: #3D6B54; }
 
 /* ---------------- 인형 무대 (카드 없음) ---------------- */
 .stage {
@@ -1157,6 +1262,7 @@ body.has-banner .sheet__wrap { padding-bottom: calc(78px + var(--banner-h)); }
 }
 
 @media (max-height: 640px) {
+  .progress__foot { display: none; }
   .doll-svg { width: min(82vw, 38dvh, 288px); }
   .notice-line { display: none; }
   .tab__label { font-size: 11px; }
