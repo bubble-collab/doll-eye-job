@@ -482,7 +482,7 @@ export default defineConfig({
 ### 저장
 
 - `localStorage` 키 `doll-eye-job.v2`에 누적/오늘 완성 수, 가상 기록, 특별 주문 수(`eventToday`, `eventTotal`),
-  목표 달성 대신 박스 채운 횟수(`lastBox`), 테마, 스페셜 배경, 가이드, 소리, 알림 동의(`notify`, `notifyAt`)를 저장합니다.
+  목표 달성 대신 박스 채운 횟수(`lastBox`), 테마, 스페셜 배경, 가이드, 소리, 진동(`haptic`), 알림 동의(`notify`, `notifyAt`)를 저장합니다.
 - 날짜가 바뀌면(Asia/Seoul 기준) 오늘 기록·오늘 특별 주문·`lastBox`만 초기화되고 누적 기록은 유지됩니다.
 - 특별 주문이 나오는 간격(`eventCountdown`)은 화면 안에서만 세다가 새로 열면 3~5개째부터 다시 잡아요.
 - 저장이 막힌 환경(사생활 보호 모드 등)에서도 동작은 정상입니다.
@@ -518,7 +518,27 @@ export default defineConfig({
 | 용어 정리 | 화면의 금액 표기를 `가상 정산`으로 통일(쉬어가기 카드 `오늘의 가상 정산`, 안내 및 출처 `가상 정산`) |
 | 스크린샷 | `downloads/doll-eye-job-unified.png`(390×844 기본) · `browser/unified-390-banner-01-*.png`(배너) · `browser/unified-390-gold-*.png`(황금) · `browser/unified-390-boxdone2-*.png`(박스 완료 직후) |
 
-### 이번 판(11-20 밤 · 전체 종합 검증 + 버그 수정)에서 라이브로 확인한 것 (moktak25)
+### 이번 판(11-20 밤 · 햅틱 추가)에서 라이브로 확인한 것 (moktak26)
+
+라이브 https://bubble-collab.github.io/doll-eye-job/ 을 데스크톱 창과 390×844(`preview-390.html` 틀) 양쪽에서 눌러 확인했습니다.
+코드 배포 커밋은 `ff2396a`(main · gh-pages 동일)입니다.
+
+| 항목 | 결과 |
+| --- | --- |
+| 로드 | `?v=moktak26` · `app.js?v=moktak26` · `styles.css?v=moktak26` 반영(스크립트 src 확인). 앱 초기화 완료(`window.DollEyeApp`·`window.DollEyeHaptic` 존재), 화면·핸들러 전부 정상 |
+| 콘솔 오류 | 검증 중 error · unhandledrejection · console.error 훅 **0건**. 브릿지가 없는 일반 웹에서도 예외 없이 조용히 통과(`support() → {toss:false, vibrate:true}`) |
+| 눈알 1개 | 클릭 2회 → `tap → tap / pattern 15 / via=vibrate` 두 번 기록 |
+| 인형 완성 | 두 번째 눈 뒤 `complete → tickMedium / pattern 25 / via=vibrate` |
+| 박스 완료(`?box=3`) | 3개를 채우자 `box → confetti / pattern [25,40,35] / via=vibrate` + 토스트 `N박스 포장 완료!` (데스크톱·390×844 양쪽 동일) |
+| 특별 주문(`?event=gold`) | 특별 주문 인형 완성 시 `success → success / pattern 25` |
+| 토스 브릿지 경로 | `window.DollEyeHaptic.register({ triggerHaptic })`로 가짜 호스트를 붙여 확인 → 수신 타입이 `tap` → `tickMedium`, `via=toss`(진동보다 브릿지 우선) |
+| 진동 스위치 | `더보기 → 설정 및 기록`에 `진동(햅틱)` 스위치 표시(기본 켜짐). 끄면 토스트 `진동(햅틱)을 껐어요` + 이후 호출이 `via=off`(진동 없음), 다시 켜면 토스트 `진동(햅틱)을 켰어요` + 확인용 `tap` 1회 |
+| 390×844 설정 레이아웃 | 스위치 2줄(눈 위치 가이드·진동)이 모달 안에 들어오고 잘림·넘침 없음(스크린샷 `browser/moktak26-390-settings-2026-11-20-233236.png`, 데스크톱 `browser/moktak26-settings-2026-11-20-233112.png`) |
+| 기존 기능 | `z-index:130` 모달·`favicon.svg`·진행·박스·특별 주문·설정 초기화 모두 이전 판 그대로 동작 |
+
+> 실제 토스 앱 햅틱은 QR 테스트에서 확인이 필요합니다. 토스 앱 설정 > 진동이 꺼져 있으면 울리지 않아요.
+
+### 이전 판(11-20 밤 · 전체 종합 검증 + 버그 수정)에서 라이브로 확인한 것 (moktak25)
 
 라이브 https://bubble-collab.github.io/doll-eye-job/ 을 390×844(`preview-390.html` 틀)와 일반 창에서 처음부터 끝까지 눌러 보며 확인했습니다. 검증 중 **막히는 버그 1건**을 찾아 고쳤습니다(아래 표).
 
@@ -538,7 +558,7 @@ export default defineConfig({
 | 더보기 · 공유 | `navigator.share` 가 있으면 OS 공유, 없으면 클립보드 복사 → 토스트 `링크를 복사했어요`(클립보드 경로 실측) |
 | 더보기 · 알림 | 바텀시트 열림 → `동의하고 알림받기` → `매일 오후 8시 알림을 신청했어요` 토스트, 더보기 행에 `켜짐` 표시 |
 | 더보기 · 설정 및 기록 | 3칸(`완성한 인형`·`오늘 완성`·`특별 주문`) 값 일치, 가이드 스위치 끄면 점선 가이드·`톡` 포인터가 사라짐, `기록 초기화` 로 전부 0으로 |
-| 더보기 · 안내 및 출처 | 랜덤 눈 순서·비게임 기준·가상 정산·광고·알림·그림과 소리·저장 7개 항목 표시 |
+| 더보기 · 안내 및 출처 | 랜덤 눈 순서·비게임 기준·가상 정산·광고·알림·그림과 소리·진동(햅틱)·저장 8개 항목 표시 |
 | 뒤로가기 | 상단 뒤로가기 버튼과 브라우저/안드로이드 뒤로가기(popstate) 모두 종료 확인 창 표시, `계속 만들기` 로 복귀 |
 | 배너(`?banner=1`) | 390×844 에서 배너 742~844 · 탭 바 666~738 로 겹치지 않고, 인형이 340px 로 줄어 스크롤 0 |
 | 검수 체크리스트 | `<title>`·상단 바·`CONFIG.appName` 모두 `인형 눈알 붙이기` / 외부 이미지·폰트·iframe·`eval` 없음(자체 파일 4개 + 인라인 SVG) / 광고 사전 안내 문구 / `기록은 전부 가상이에요` 고지 / 종료 확인 창 있음 |
